@@ -1,0 +1,140 @@
+﻿using RhythmBase.RhythmDoctor.Components;
+using RhythmBase.RhythmDoctor.Events;
+namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
+{
+	public class NurseSayConfig
+	{
+		public SayReadyGetSetGoVoiceSources VoiceSource { get; set; } = SayReadyGetSetGoVoiceSources.Nurse;
+	}
+	public record struct OneshotPulseHit()
+	{
+		public float Interval { get; set; }
+		public float Offset { get; set; }
+		public float[] Pulses = [];
+		public bool Skip { get; set; } = false;
+		public static OneshotPulseHit operator <<(OneshotPulseHit hit, float delta)
+		{
+			hit.Offset -= delta;
+			return hit;
+		}
+		public static OneshotPulseHit operator >>(OneshotPulseHit hit, float delta)
+		{
+			hit.Offset += delta;
+			return hit;
+		}
+		public OneshotPulseHit Copy()
+		{
+			return new OneshotPulseHit()
+			{
+				Interval = Interval,
+				Offset = Offset,
+				Pulses = [.. Pulses],
+				Skip = Skip
+			};
+		}
+	}
+	public class OneshotHitPattern
+	{
+		private readonly OneshotPulseHit[] _private;
+		private readonly SortedList<int, OneshotPulseHit[]> _cache = [];
+		public float Length { get; private init; }
+		public int Loop { get; set; } = 1;
+		/// <summary>
+		/// Gets or sets the <see cref="OneshotPulseHit"/> at the specified loop and index.
+		/// </summary>
+		/// <remarks>Accessing this property may involve initializing the cache for the specified loop by creating a
+		/// copy of the internal collection. This ensures that modifications to the cache do not affect the original
+		/// data.</remarks>
+		/// <param name="loop">The loop identifier. Must be non-negative.</param>
+		/// <param name="index">The index within the loop. Must be non-negative.</param>
+		/// <returns></returns>
+		/// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="loop"/> or <paramref name="index"/> is negative.</exception>
+		public OneshotPulseHit this[int loop, int index]
+		{
+			get
+			{
+				if (loop < 0)
+					throw new ArgumentOutOfRangeException(nameof(loop), "Loop must be non-negative.");
+				if (index < 0)
+					throw new ArgumentOutOfRangeException(nameof(index), "Index must be non-negative.");
+				if (_cache.TryGetValue(loop, out var cached))
+					return cached[index];
+				cached = [.. _private.Select(i => i.Copy())];
+				_cache.Add(loop, cached);
+				return cached[index];
+			}
+			set
+			{
+				if (loop < 0)
+					throw new ArgumentOutOfRangeException(nameof(loop), "Loop must be non-negative.");
+				if (index < 0)
+					throw new ArgumentOutOfRangeException(nameof(index), "Index must be non-negative.");
+				if (_cache.TryGetValue(loop, out var cached))
+				{
+					cached[index] = value;
+				}
+				else
+				{
+					cached = [.. _private.Select(i => i.Copy())];
+					cached[index] = value;
+					_cache.Add(loop, cached);
+				}
+			}
+		}
+		/// <summary>
+		/// Creates a new instance of the <see cref="OneshotHitPattern"/> class with the specified pattern and length.
+		/// </summary>
+		/// <param name="pattern">
+		/// A string representing the pattern to be used for the hit sequence. Cannot be null or empty.
+		/// <para>The pattern uses the following symbols:</para>
+		/// <para><c>-</c> : pulse</para>
+		/// <para><c>.</c> : hit</para>
+		/// <para><c>space</c> : ignore</para>
+		/// Example:
+		/// <code>
+		/// "- .- -. "
+		/// </code>
+		/// </param>
+		/// <param name="length">The duration of the pattern, in seconds. Must be a positive value.</param>
+		/// <returns>A new <see cref="OneshotHitPattern"/> instance configured with the specified pattern and length.</returns>
+		public OneshotHitPattern(string pattern, float length)
+		{
+			List<int> pulses = [];
+			List<OneshotPulseHit> hits = [];
+			for (int i = 0; i < pattern.Length; i++)
+			{
+				char c = pattern[i];
+				switch (c)
+				{
+					case '-':
+						pulses.Add(i);
+						break;
+					case '.':
+						hits.Add(new()
+						{
+							Interval = length / pattern.Length,
+							Offset = i * (length / pattern.Length),
+							Pulses = [.. pulses.Select(p => (p - i) * (length / pattern.Length))]
+						});
+						break;
+					case ' ':
+						break;
+					default:
+						throw new ArgumentException("Pattern can only contain '-', '.', and ' ' characters.");
+				}
+			}
+			_private = [.. hits];
+			Length = length;
+		}
+	}
+	public static class OneshotHelper
+	{
+		public static void AddOneshotHitPattern(
+			this RDLevel e,
+			OneshotHitPattern pattern,
+			bool addNurseSay = true)
+		{
+
+		}
+	}
+}

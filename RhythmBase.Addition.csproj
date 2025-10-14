@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	<RootNamespace>RhythmBase</RootNamespace>
+	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	<Title>RhythmBase.Addition</Title>
+	<Version>1.2.0-rc7</Version>
+	<Authors>obugs</Authors>
+	<Company />
+	<Description>Added some tools into RhythmBase.</Description>
+	<PackageTags>Rhythm Doctor</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="C:\Users\30698\.nuget\packages\naudio.vorbis\1.5.0\contentFiles\any\netstandard2.0\README.md" />
+    <None Remove="D:\.nuget\packages\naudio.vorbis\1.5.0\contentFiles\any\netstandard2.0\README.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Brc" Version="1.0.0" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="NAudio.Vorbis" Version="1.5.0" />
+    <PackageReference Include="PrimitiveSharp.Core" Version="1.0.3" />
+    <PackageReference Include="RhythmBase" Version="1.2.8" />
+    <PackageReference Include="SkiaSharp" Version="3.119.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\RDLevel\RhythmBase.Test\bin\Debug\net8.0\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="RhythmDoctor\Components\" />
+  </ItemGroup>
+
+</Project>
