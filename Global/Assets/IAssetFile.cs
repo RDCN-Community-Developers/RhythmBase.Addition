@@ -12,6 +12,6 @@
 	/// </summary>
 	public interface IAssetFile<T> : IAssetFile where T : IAssetFile<T>
 	{
-		static abstract T? Load(string fullpath);
+		static abstract T? FromFile(string fullpath);
 	}
 }

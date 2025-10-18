@@ -28,7 +28,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 			}
 		}
 		internal RDWaveFile() { }
-		public static RDWaveFile? Load(string path) =>
+		public static RDWaveFile? FromFile(string path) =>
 			Path.Exists(path)
 				? new() { FilePath = path }
 				: null;

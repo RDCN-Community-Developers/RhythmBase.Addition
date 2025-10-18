@@ -32,7 +32,7 @@ namespace RhythmBase.Global.Assets
 		/// <summary>
 		/// Load the file contents into memory.
 		/// </summary>
-		public static RDImage? Load(string path)
+		public static RDImage? FromFile(string path)
 		{
 			if (!Path.Exists(path))
 				return null;

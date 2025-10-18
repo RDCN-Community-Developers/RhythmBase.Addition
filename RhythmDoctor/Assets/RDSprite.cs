@@ -6,8 +6,12 @@ using RhythmBase.Global.Assets;
 using RhythmBase.Global.Components;
 using RhythmBase.Global.Extensions;
 using RhythmBase.Global.Settings;
+using RhythmBase.RhythmDoctor.Converters;
 using RhythmBase.RhythmDoctor.Extensions;
 using SkiaSharp;
+using System;
+using System.Buffers;
+using System.Text.Json;
 namespace RhythmBase.RhythmDoctor.Assets
 {
 	/// <summary>
@@ -38,7 +42,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// Base layer
 		/// </summary>
 		[JsonIgnore]
-		public required SKBitmap ImageBase { get; set; }
+		public SKBitmap ImageBase { get; set; }
 		/// <summary>
 		/// Glow layer
 		/// </summary>
@@ -69,11 +73,11 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// <summary>
 		/// Information of expressions.
 		/// </summary>
-		public HashSet<Expression> Clips { get; set; } = [];
+		public HashSet<Expression> Clips { get; set; } = new();
 		/// <summary>
 		/// Image offset when the row is previewed.
 		/// </summary>
-		public RDSizeN? RowPreviewOffset { get; set; }
+		public RDPointN? RowPreviewOffset { get; set; }
 		/// <summary>
 		/// Row preview frame.
 		/// </summary>
@@ -85,11 +89,11 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// <summary>
 		/// Image offset in dialog box.
 		/// </summary>
-		public RDSizeN? PortraitOffset { get; set; }
+		public RDPointN? PortraitOffset { get; set; }
 		/// <summary>
 		/// Image clipping in the dialog box.
 		/// </summary>
-		public RDSizeN? PortraitSize { get; set; }
+		public RDSizeNI? PortraitSize { get; set; }
 		/// <summary>
 		/// Image scale in the dialog box.
 		/// </summary>
@@ -112,10 +116,9 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// <summary>
 		/// Load the file contents into memory.
 		/// </summary>
-		public static RDSprite? Load(string path)
+		public static RDSprite? FromFile(string path)
 		{
 			string _file = Path.Combine(Path.GetDirectoryName(path) ?? "", Path.GetFileNameWithoutExtension(path));
-			JsonSerializer setting = new();
 			bool flag = File.Exists($"{_file}.json");
 			string json;
 			if (flag)
@@ -128,148 +131,36 @@ namespace RhythmBase.RhythmDoctor.Assets
 					return null;
 				json = $"{_file}\\{Path.GetFileName(_file)}";
 			}
-			JObject obj = setting.Deserialize<JObject>(new JsonTextReader(File.OpenText($"{json}.json")))!;
-			string imageBaseFile = $"{json}.png";
-			string imageGlowFile = $"{json}_glow.png";
-			string imageOutlineFile = $"{json}_outline.png";
-			string imageFreezeFile = $"{json}_freeze.png";
-			if (File.Exists(imageBaseFile))
-			{
-				RDSprite sprite = new()
-				{
-					FilePath = path,
-					ImageBase = SKBitmap.Decode(imageBaseFile),
-					ImageGlow = File.Exists(imageGlowFile) ? SKBitmap.Decode(imageGlowFile) : null,
-					ImageOutline = File.Exists(imageOutlineFile) ? SKBitmap.Decode(imageOutlineFile) : null,
-					ImageFreeze = File.Exists(imageFreezeFile) ? SKBitmap.Decode(imageFreezeFile) : null,
-					Name = obj[nameof(Name).ToLowerCamelCase()]?.ToObject<string>(),
-					Voice = obj[nameof(Voice).ToLowerCamelCase()]?.ToObject<string>(),
-					Size = obj[nameof(Size).ToLowerCamelCase()]!.ToObject<RDSizeNI>(),
-					RowPreviewOffset = obj[nameof(RowPreviewOffset).ToLowerCamelCase()]?.ToObject<RDSizeN>(),
-					RowPreviewFrame = obj[nameof(RowPreviewFrame).ToLowerCamelCase()]?.ToObject<uint>(),
-					PivotOffset = obj[nameof(PivotOffset).ToLowerCamelCase()]?.ToObject<RDPointN>(),
-					PortraitOffset = obj[nameof(PortraitOffset).ToLowerCamelCase()]?.ToObject<RDSizeN>(),
-					PortraitSize = obj[nameof(PortraitSize).ToLowerCamelCase()]?.ToObject<RDSizeN>(),
-					PortraitScale = obj[nameof(PortraitScale).ToLowerCamelCase()]?.ToObject<float>()
-				};
-				foreach (JToken clip in obj[nameof(Clips).ToLowerCamelCase()] ?? new JObject())
-					sprite.Clips.Add(clip.ToObject<Expression>()!);
-				return sprite;
-			}
-			return null;
+			using FileStream stream = File.OpenRead($"{json}.json");
+			return FromStream(stream, null);
 		}
-		public void Save() => Save(FilePath);
-		/// <summary>
-		/// Write JSON data to the text stream.
-		/// </summary>
-		/// <param name="textWriter">Text writer stream.</param>
-		public void WriteJson(TextWriter textWriter) => WriteJson(textWriter, new SpriteReadOrWriteSettings());
+		public static RDSprite? FromStream(Stream stream, SpriteReadOrWriteSettings? settings = null)
+		{
+			SpriteConverter converter = new();
+			byte[] buffer = new byte[stream.Length];
+			stream.Read(buffer, 0, buffer.Length);
+			var reader = new Utf8JsonReader(buffer, new()
+			{
+				AllowTrailingCommas = true
+			});
+			reader.Read();
+			return converter.Read(ref reader, typeof(RDSprite), new());
+		}
 		/// <summary>
 		/// Write JSON data to the text stream.
 		/// </summary>
 		/// <param name="textWriter">Text writer stream.</param>
 		/// <param name="setting">Write settings.</param>
-		public void WriteJson(TextWriter textWriter, SpriteReadOrWriteSettings setting)
+		public void WriteJson(Stream stream, SpriteReadOrWriteSettings? setting = null)
 		{
-			JsonSerializerSettings jsonS = new()
+			SpriteConverter converter = new();
+			using var writer = new Utf8JsonWriter(stream, new()
 			{
-				ContractResolver = new CamelCasePropertyNamesContractResolver(),
-				NullValueHandling = NullValueHandling.Ignore,
-				Formatting = Formatting.None
-			};
-			JsonTextWriter writer = new(textWriter)
-			{
-				Formatting = setting.Indented ? Formatting.Indented : Formatting.None
-			};
-			JObject meObj = JObject.FromObject(this, JsonSerializer.Create(jsonS));
-			JArray? clipArray = (JArray?)meObj["Clips".ToLowerCamelCase()];
-			Dictionary<string, int> PropertyNameLength = [];
-			Dictionary<string, List<string>> propertyValues = [];
-			if (clipArray is not null)
-				foreach (JToken jtoken in clipArray)
-				{
-					JObject clip = (JObject)jtoken;
-					foreach (KeyValuePair<string, JToken?> pair in clip)
-					{
-						string stringedValue = pair.Value?.Type == JTokenType.Null ? string.Empty : JsonConvert.SerializeObject(pair.Value, Formatting.None, jsonS);
-						if (propertyValues.TryGetValue(pair.Key, out var value))
-							value.Add(stringedValue);
-						else
-							propertyValues[pair.Key] = [stringedValue];
-						if (PropertyNameLength.TryGetValue(pair.Key, out int value2))
-							PropertyNameLength[pair.Key] = Math.Max(value2, stringedValue.Length);
-						else
-							PropertyNameLength[pair.Key] = stringedValue.Length;
-					}
-				}
-			if (!setting.IgnoreNullValue)
-				foreach (KeyValuePair<string, List<string>> pair2 in propertyValues)
-					if (pair2.Value.Contains(string.Empty) &&
-						pair2.Value.Any(i => i != string.Empty))
-						PropertyNameLength[pair2.Key] = Math.Max(PropertyNameLength[pair2.Key], 4);
-			meObj.Remove("Size".ToLowerCamelCase());
-			meObj.Remove("Clips".ToLowerCamelCase());
-			JsonTextWriter jsonTextWriter = writer;
-			jsonTextWriter.WriteStartObject();
-			foreach (KeyValuePair<string, JToken?> pair3 in meObj)
-			{
-				if (pair3.Value?.Type != JTokenType.Null)
-				{
-					jsonTextWriter.WritePropertyName(pair3.Key);
-					jsonTextWriter.WriteRawValue(JsonConvert.SerializeObject(pair3.Value, Formatting.None, jsonS));
-				}
-			}
-			jsonTextWriter.WritePropertyName("Size".ToLowerCamelCase());
-			jsonTextWriter.WriteStartArray();
-			jsonTextWriter.WriteValue(Size.Width);
-			jsonTextWriter.WriteValue(Size.Height);
-			jsonTextWriter.WriteEndArray();
-			jsonTextWriter.WritePropertyName("Clips".ToLowerCamelCase());
-			jsonTextWriter.WriteStartArray();
-			int num = (clipArray?.Count ?? 0) - 1;
-			for (int j = 0; j <= num; j++)
-			{
-				jsonTextWriter.WriteStartObject();
-				writer.Formatting = Formatting.None;
-				foreach (KeyValuePair<string, List<string>> pair4 in propertyValues)
-				{
-					if (PropertyNameLength[pair4.Key] > 0)
-					{
-						if (setting.IgnoreNullValue)
-						{
-							if (string.IsNullOrEmpty(pair4.Value[j]))
-							{
-								if (setting.Indented)
-								{
-									jsonTextWriter.WriteWhitespace(string.Empty.PadRight(pair4.Key.Length + PropertyNameLength[pair4.Key] + 4));
-								}
-							}
-							else
-							{
-								jsonTextWriter.WritePropertyName(pair4.Key);
-								jsonTextWriter.WriteRawValue(pair4.Value[j].PadRight(setting.Indented ? PropertyNameLength[pair4.Key] : 0));
-							}
-						}
-						else
-						{
-							jsonTextWriter.WritePropertyName(pair4.Key);
-							if (string.IsNullOrEmpty(pair4.Value[j]))
-							{
-								jsonTextWriter.WriteRawValue(JsonConvert.Null.PadRight(setting.Indented ? PropertyNameLength[pair4.Key] : 0));
-							}
-							else
-							{
-								jsonTextWriter.WriteRawValue(pair4.Value[j].PadRight(setting.Indented ? PropertyNameLength[pair4.Key] : 0));
-							}
-						}
-					}
-				}
-				jsonTextWriter.WriteEndObject();
-				writer.Formatting = setting.Indented ? Formatting.Indented : Formatting.None;
-			}
-			jsonTextWriter.WriteEndArray();
-			jsonTextWriter.WriteEndObject();
-			textWriter.Flush();
+				SkipValidation = true,
+				Indented = true,
+			});
+			converter.Write(writer, this, new());
+			writer.Flush();
 		}
 		/// <summary>
 		/// Gets the frame crop area.
@@ -337,8 +228,9 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// <param name="path">the file path.</param>
 		/// <param name="settings">save settings.</param>
 		/// <exception cref="T:RhythmBase.Exceptions.OverwriteNotAllowedException">The save path is the same as the reference path.</exception>
-		public void Save(string path, SpriteReadOrWriteSettings settings)
+		public void Save(string path, SpriteReadOrWriteSettings? settings = null)
 		{
+			settings ??= new();
 			FileInfo file = new(path);
 			string WithoutExtension = Path.Combine(file.Directory?.FullName ?? "", Path.GetFileNameWithoutExtension(file.Name));
 			if (settings.WithImage)
@@ -348,7 +240,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 				ImageOutline?.Save(WithoutExtension + "_outline.png");
 				ImageFreeze?.Save(WithoutExtension + "_freeze.png");
 			}
-			using StreamWriter stream = new FileInfo(WithoutExtension + ".json").CreateText();
+			using FileStream stream = File.Open(WithoutExtension + ".json", FileMode.Create, FileAccess.Write);
 			WriteJson(stream, settings);
 		}
 		/// <inheritdoc/>
@@ -393,7 +285,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 			/// <summary>
 			/// Image offset in dialog box.
 			/// </summary>
-			public RDSizeN? PortraitOffset { get; set; }
+			public RDPointN? PortraitOffset { get; set; }
 			/// <summary>
 			/// Image scale in the dialog box.
 			/// </summary>
@@ -401,7 +293,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 			/// <summary>
 			/// Image clipping in the dialog box.
 			/// </summary>
-			public RDSizeN? PortraitSize { get; set; }
+			public RDSizeNI? PortraitSize { get; set; }
 			public override string ToString() => Name;
 		}
 	}

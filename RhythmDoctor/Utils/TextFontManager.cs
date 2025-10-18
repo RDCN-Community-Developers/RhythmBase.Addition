@@ -4,11 +4,15 @@ using RhythmBase.RhythmDoctor.Assets;
 using RhythmBase.RhythmDoctor.Assets.FlexibleSprite;
 using RhythmBase.RhythmDoctor.Components;
 using SkiaSharp;
-using System.Diagnostics.CodeAnalysis;
 
 namespace RhythmBase.RhythmDoctor.Utils
 {
-	public record struct TextInfo(string Character, RDPointN Position, RDRectN Bound, float Width, RDSizeNI Size);
+	public record struct TextInfo(string Character, RDPointN Position, RDRectN Bound, float Width, RDSizeNI Size)
+	{
+		public RDPointN DecorationPivot => new(
+				Position.X / Size.Width * 100,
+				(1 - Position.Y / Size.Height) * 100);
+	}
 	public class TextFontManager
 	{
 		private readonly Dictionary<string, TextInfo> infos = [];
@@ -39,10 +43,18 @@ namespace RhythmBase.RhythmDoctor.Utils
 		}
 		public void Build(RDLevel level, out RDSprite[] sprites, int maxPoolSize = 1000)
 		{
-			builtBook = spriteSheetCanvas.Build(out sprites);
+			builtBook = spriteSheetCanvas.Build(out RDSprite[] result);
+			sprites = [.. result.Select((s, i)=>
+			{
+				s.Name = $"{filename}-{i}";
+				foreach(var clip in s.Clips)
+					clip.Loop = LoopOption.onBeat;
+				s.AddBlankExpressionForDecoration();
+				return s;
+			})];
 			pools = new DecorationPool<string>[builtBook.PageCount];
 			for (int i = 0; i < pools.Length; i++)
-				pools[i] = new DecorationPool<string>(level, $"{filename}_{i}", maxPoolSize);
+				pools[i] = new DecorationPool<string>(level, $"{filename}-{i}", maxPoolSize);
 			isBuilt = true;
 		}
 		public (Decoration, TextInfo) Allocate(float start, float end, string word)

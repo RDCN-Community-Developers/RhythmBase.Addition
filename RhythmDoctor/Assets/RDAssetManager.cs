@@ -7,7 +7,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 		public T? Get<T>(string name) where T : IAssetFile<T>
 		{
 			if (!data.TryGetValue(name, out Lazy<IAssetFile?>? value) || value.Value is null)
-				data[name] = new Lazy<IAssetFile?>(() => T.Load(typeof(T) == typeof(RDBuiltInAudio) ? name : Path.Combine(baseLevel.Directory, name)));
+				data[name] = new Lazy<IAssetFile?>(() => T.FromFile(typeof(T) == typeof(RDBuiltInAudio) ? name : Path.Combine(baseLevel.Directory, name)));
 			return data[name].Value is T v ? v : default;
 		}
 		public void Set<T>(string name, T value) where T : IAssetFile<T>

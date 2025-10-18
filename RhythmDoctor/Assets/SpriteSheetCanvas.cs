@@ -231,7 +231,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 					_ => throw new NotImplementedException(),
 				});
 #if DEBUG
-				canvas.DrawRect(bound, new() { Style = SKPaintStyle.Fill, Color = SKColors.White.WithAlpha(50), StrokeWidth = 1 });
+				canvas.DrawRect(bound, new() { Style = SKPaintStyle.Fill, Color = SKColors.White.WithAlpha(10), StrokeWidth = 1 });
 #endif
 				bound.Size = frameToDraw[0].Size;
 				canvas.DrawBitmap(frameToDraw[0].Base, bound, null);
@@ -289,7 +289,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 					sprite.Clips.Add(new RDSprite.Expression()
 					{
 						Name = frame.Name,
-						Frames = [frame.ImageIndex],
+						Frames = [frame.FrameIndex],
 					});
 				}
 				_sprites.Add(sprite);

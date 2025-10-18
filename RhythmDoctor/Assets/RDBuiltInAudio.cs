@@ -6,7 +6,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 	{
 		public string DisplayName { get; } = name;
 		public string FilePath => "";
-		public static RDBuiltInAudio? Load(string name) => new(name);
+		public static RDBuiltInAudio? FromFile(string name) => new(name);
 		void IAssetFile.Save(string filepath) { }
 		public override string ToString() => DisplayName;
 	}
