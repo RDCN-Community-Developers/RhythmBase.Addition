@@ -191,7 +191,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// </summary>
 		/// <returns>An array of rectangles indicating each crop area.</returns>
 		public SKRectI[] GetFrameRects(Expression expression) => (from i in expression.Frames
-																  select GetFrameRect((int)i)).ToArray();
+																  select GetFrameRect(i)).ToArray();
 		/// <summary>
 		/// Add a blank expression.
 		/// </summary>

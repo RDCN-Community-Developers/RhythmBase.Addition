@@ -5,7 +5,7 @@ VisualStudioVersion = 17.11.35327.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RhythmBase.Addition", "RhythmBase.Addition.csproj", "{E490E9C6-172C-4F8B-B7CC-039A21FE1A2B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RhythmBase.Additiion Tests", "..\RhythmToolkitAdditiionTests\RhythmBase.Additiion Tests.csproj", "{6A8D62FA-C407-4962-A1AD-7EAD1FB2966C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RhythmBase.Addition Tests", "..\RhythmToolkitAdditionTests\RhythmBase.Addition Tests.csproj", "{6A8D62FA-C407-4962-A1AD-7EAD1FB2966C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RhythmBase.Addition.GraphicsTest", "..\RhythmBase.Addition.GraphicsTest\RhythmBase.Addition.GraphicsTest.csproj", "{B1EEBA72-ECAC-4AF9-8337-B6B9ACBE279D}"
 EndProject

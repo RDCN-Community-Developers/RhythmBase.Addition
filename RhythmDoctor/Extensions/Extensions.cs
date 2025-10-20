@@ -1,6 +1,7 @@
 ﻿using RhythmBase.Global.Assets;
 using RhythmBase.RhythmDoctor.Assets;
 using RhythmBase.RhythmDoctor.Components;
+using System.Numerics;
 
 namespace RhythmBase.RhythmDoctor.Extensions
 {
@@ -34,5 +35,7 @@ namespace RhythmBase.RhythmDoctor.Extensions
 				return null;
 			return (IAssetFile?)manager.Get<RDWaveFile>(ch) ?? manager.Get<RDBuiltInAudio>(ch);
 		}
+		public static RDPointN3 ToRDPointN3(this Vector3 vec) => new RDPointN3(vec.X, vec.Y, vec.Z);
+		public static Vector3 ToVector3(this RDPointN3 point) => new Vector3(point.X, point.Y, point.Z);
 	}
 }
