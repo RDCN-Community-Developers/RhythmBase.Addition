@@ -1,81 +1,27 @@
 ﻿using RhythmBase.Global.Components;
+using RhythmBase.Global.Components.Easing;
 using RhythmBase.RhythmDoctor.Components;
+using RhythmBase.RhythmDoctor.Events;
 using RhythmBase.RhythmDoctor.Extensions;
+using System.Collections.ObjectModel;
 using System.Numerics;
 
 namespace RhythmBase.RhythmDoctor.Utils.Perspective
 {
 	public class Viewer
 	{
-		private Vector3 View { get; set; }
-		public float Zoom { get; private set; } = 1.0f;
-		public RDPointN Center { get; private set; } = new RDPointN(0, 0);
+		public HashSet<Decoration> XDecorations { get; } = [];
+		public HashSet<Decoration> YDecorations { get; } = [];
+		public HashSet<Decoration> ZDecorations { get; } = [];
+		public RDPointN3 Camera { get; private set; }
+		//public float Zoom { get; private set; } = 1.0f;
 		public Viewer()
 		{
 		}
-		public Result<ObjectResult> PointAt(RDPointN3 pb)
-		{
-			var p = View;
-			var result = LookFrom(p.ToRDPointN3());
-			Result<ObjectResult> r = new()
-			{
-				X = new()
-				{
-					Position = new(
-
-						pb.Y * -float.Sin(result.X.ElementAngle) +
-						pb.Z * float.Cos(result.X.ElementAngle) * float.Sign(p.X) +
-						0
-						,
-
-						pb.Y * float.Cos(result.X.ElementAngle) +
-						pb.Z * float.Sin(result.X.ElementAngle) * float.Sign(p.X) +
-						pb.X * Length(result.X.Direction) / (Length(result.X.RoomDirecion) + 0.00001f) * float.Sign(-p.X)
-						),
-					Angle = result.X.ElementAngle,
-					Scale = new(float.Sign(p.X), 1),
-				},
-				Y = new()
-				{
-					Position = new(
-
-						pb.Z * -float.Sin(result.Y.ElementAngle) +
-						pb.X * float.Cos(result.Y.ElementAngle) * float.Sign(p.Y) +
-						0
-						,
-
-						pb.Z * float.Cos(result.Y.ElementAngle) +
-						pb.X * float.Sin(result.Y.ElementAngle) * float.Sign(p.Y) +
-						pb.Y * Length(result.Y.Direction) / (Length(result.Y.RoomDirecion) + 0.00001f) * float.Sign(-p.Y)
-						),
-					Angle = result.Y.ElementAngle,
-					Scale = new(float.Sign(p.Y), 1),
-				},
-				Z = new()
-				{
-					Position = new(
-
-						pb.X * -float.Sin(result.Z.ElementAngle) +
-						pb.Y * float.Cos(result.Z.ElementAngle) * float.Sign(p.Z) +
-						0
-						,
-
-						pb.X * float.Cos(result.Z.ElementAngle) +
-						pb.Y * float.Sin(result.Z.ElementAngle) * float.Sign(p.Z) +
-						pb.Z * Length(result.Z.Direction) / (Length(result.Z.RoomDirecion) + 0.00001f) * float.Sign(-p.Z)
-						),
-					Angle = result.Z.ElementAngle,
-					Scale = new(float.Sign(p.Z), 1),
-				},
-			};
-			return r;
-		}
-		private static float Length(RDPointN p) =>
-			(float)Math.Sqrt(p.X * p.X + p.Y * p.Y);
-		public Result<RoomResult> LookFrom(RDPointN3 p)
+		public Result3D<Room> LookFrom(RDPointN3 p)
 		{
 			var v = p.ToVector3();
-			View = v;
+			Camera = p;
 			// 基平面投影基准向量
 			var ux = UnitOf(new(1, 0, 0), v);
 			var uy = UnitOf(new(0, 1, 0), v);
@@ -98,87 +44,70 @@ namespace RhythmBase.RhythmDoctor.Utils.Perspective
 			var bx = float.Sign(p.X);
 			var by = float.Sign(p.Y);
 			var bz = float.Sign(p.Z);
-			Result<RoomResult> result = new()
+			Result3D<Room> result = new()
 			{
 				X = new()
 				{
 					RoomDirecion = new RDPointN(vx.X, -vx.Y),
 					ElementAngle = rx * bx * bz,
 					Direction = new RDPointN(tx.X, tx.Y),
+					CameraValue = p.X,
 				},
 				Y = new()
 				{
 					RoomDirecion = new RDPointN(vy.X, vy.Y),
 					ElementAngle = ry * bx * by,
 					Direction = new RDPointN(ty.X, ty.Y),
+					CameraValue = p.Y,
 				},
 				Z = new()
 				{
 					RoomDirecion = new RDPointN(vz.X, -vz.Y),
 					ElementAngle = rz * bz * by,
 					Direction = new RDPointN(tz.X, tz.Y),
+					CameraValue = p.Z,
 				},
 			};
 			return result;
 		}
+		public Result3D<Room>[] LookFrom(RDPointN3 p, int frameCount, EaseType ease = EaseType.Linear)
+		{
+			Vector3 oc = Camera.ToVector3();
+			Vector3 cc = p.ToVector3();
+			Result3D<Room>[] results = new Result3D<Room>[frameCount];
+			for (int i = 0; i < frameCount; i++)
+			{
+				float t = (float)ease.Calculate(i / (float)(frameCount - 1));
+				Vector3 c = Vector3.Lerp(oc, cc, t);
+				results[i] = LookFrom(new RDPointN3(c.X, c.Y, c.Z));
+			}
+			return results;
+		}
 		private static Vector2 Project(Vector3 value, Vector3 dir)
 		{
-			/* 伪代码（详细计划）：
-			- 如果 dir 近似为零向量，返回 Vector2.Zero（无法定义平面方向）
-			- 归一化 dir 为 nDir（这样可以简化投影计算）
-			- 计算 value 在法向量方向的分量并从 value 中减去，得到 vproj（即 value 在平面上的向量）
-			- 如果 vproj 非常接近 0，返回 Vector2.Zero（投影近似为点）
-			- 选择参考轴 refAxis（优先 Y 轴），如果与 nDir 平行则改用 X 轴
-			- 通过 Gram-Schmidt 正交化 refAxis 得到 u（在平面内并与 nDir 正交），归一化
-			- 计算 v = normalize(cross(nDir, u))（在平面内且与 u 正交）
-			- 将 vproj 在 (u, v) 基底上的坐标作为返回值
-			- 在每一步都用一致的 EPS（对长度平方比较使用 EPS*EPS）来判断退化情况
-			*/
 			const float EPS = 1e-6f;
 			const float EPS_SQ = EPS * EPS;
-
-			// dir 不能为零向量
 			float dirLenSq = Vector3.Dot(dir, dir);
 			if (dirLenSq <= EPS_SQ)
 				return Vector2.Zero;
-
-			// 归一化法向量，便于后续计算
 			Vector3 nDir = Vector3.Normalize(dir);
-
-			// 在平面上的投影：value 去除沿法向量的分量
 			float comp = Vector3.Dot(value, nDir);
 			Vector3 vproj = value - nDir * comp;
 			if (vproj.LengthSquared() <= EPS_SQ)
 				return Vector2.Zero;
-
-			// 选择参考轴（优先 Y 轴，避免与法向量共线）
 			Vector3 refAxis = new Vector3(0f, 1f, 0f);
 			if (Vector3.Cross(refAxis, nDir).LengthSquared() <= EPS_SQ)
 				refAxis = new Vector3(1f, 0f, 0f);
-
-			// Gram-Schmidt：把 refAxis 正交到平面上，得到 u
 			Vector3 u = refAxis - nDir * Vector3.Dot(refAxis, nDir);
 			if (u.LengthSquared() <= EPS_SQ)
 				return Vector2.Zero;
 			u = Vector3.Normalize(u);
-
-			// 在平面内与 u 正交的方向 v
 			Vector3 v = Vector3.Cross(nDir, u);
 			if (v.LengthSquared() <= EPS_SQ)
 				return Vector2.Zero;
 			v = Vector3.Normalize(v);
-
-			// 返回在 (u, v) 基底上的坐标
 			return new Vector2(Vector3.Dot(vproj, u), Vector3.Dot(vproj, v));
 		}
-
-		// 伪代码（详细计划）：
-		// 1. 计算 unit 的长度平方 unitLenSq；如果接近 0，返回 Vector3.Zero（unit 不能为零向量）
-		// 2. 计算点积 dotUD = dot(unit, dir)
-		// 3. 利用向量三重积恒等式计算交线方向向量：res = dir * unitLenSq - unit * dotUD
-		//    说明：res 等价于 (unit × dir) × unit，位于由 unit 与 dir 张成的平面与垂直于 unit 的平面的交线上
-		// 4. 如果 res 近似为零（表示 dir 与 unit 共线或退化），返回 Vector3.Zero
-		// 5. 返回归一化后的 res 作为交线的单位方向向量
 		private static Vector3 UnitOf(Vector3 unit, Vector3 dir)
 		{
 			const float EPS = 1e-6f;
@@ -203,34 +132,133 @@ namespace RhythmBase.RhythmDoctor.Utils.Perspective
 				return 0f;
 			return float.Acos(Vector3.Dot(v1, v2) / (len1 * len2));
 		}
-		// 偏航角（yaw），俯仰角（pitch）
-		/* 详细计划（伪代码）：
-        - 如果向量 v 的长度接近 0，返回 Vector2.Zero（无方向）
-        - 计算在 XZ 平面上的投影长度 proj = sqrt(v.X^2 + v.Z^2)
-        - 偏航角 yaw：绕 Y 轴的角度，使用 atan2(v.X, v.Z)
-        - 俯仰角 pitch：绕 X 轴（水平轴）的角度，使用 atan2(v.Y, proj)
-        - 说明：返回的角度均为弧度。若 proj 非常接近 0，则将 yaw 设为 0（朝向上/下时无法定义偏航）
-        */
 		private static Vector2 AngleOf(Vector3 v)
 		{
 			const float EPS = 1e-6f;
-
-			// 向量太小则无法确定角度
 			if (v.LengthSquared() <= EPS * EPS)
 				return Vector2.Zero;
-
-			// 在 XZ 平面上的投影长度
 			float proj = MathF.Sqrt(v.X * v.X + v.Z * v.Z);
-
-			// 偏航：绕 Y 轴（右手系），以 Z 轴为参考，右偏为正
 			float yaw = 0f;
 			if (proj > EPS)
 				yaw = MathF.Atan2(v.X, v.Z);
-
-			// 俯仰：绕 X 轴，向上为正
 			float pitch = MathF.Atan2(v.Y, proj);
-
 			return new Vector2(yaw, pitch);
+		}
+	}
+	public class PerspectivePoint
+	{
+		internal Builder? parent;
+		internal RDPointN3 currentPoint;
+		public List<Decoration> XDecorations { get; set; } = [];
+		public List<Decoration> YDecorations { get; set; } = [];
+		public List<Decoration> ZDecorations { get; set; } = [];
+		public void MoveTo(RDPointN3 p, RDBeat beat, float duration, EaseType ease = EaseType.Linear)
+		{
+			if (parent?.lastLook is not Result3D<Room> look)
+				return;
+			currentPoint = p;
+			var po = look.PointAt(p);
+			foreach (var dec in XDecorations)
+			{
+				Move m = po.X.GetMove();
+				m.Beat = beat;
+				m.Duration = duration;
+				m.Ease = ease;
+				dec.Add(m);
+			}
+			foreach (var dec in YDecorations)
+			{
+				Move m = po.Y.GetMove();
+				m.Beat = beat;
+				m.Duration = duration;
+				m.Ease = ease;
+				dec.Add(m);
+			}
+			foreach (var dec in ZDecorations)
+			{
+				Move m = po.Z.GetMove();
+				m.Beat = beat;
+				m.Duration = duration;
+				m.Ease = ease;
+				dec.Add(m);
+			}
+		}
+	}
+	public class Builder
+	{
+		private readonly RDLevel level;
+		private readonly Viewer viewer = new();
+		internal Result3D<Room>? lastLook;
+		public RDSingleRoom XIndex { get; set; } = RDRoomIndex.None;
+		public RDSingleRoom YIndex { get; set; } = RDRoomIndex.None;
+		public RDSingleRoom ZIndex { get; set; } = RDRoomIndex.None;
+		public ObservableCollection<PerspectivePoint> Points { get; } = [];
+		public Builder(RDLevel level)
+		{
+			this.level = level;
+			Points.CollectionChanged += (s, e) =>
+			{
+				if (e.OldItems != null)
+					foreach (PerspectivePoint p in e.OldItems)
+						p.parent = null;
+				if (e.NewItems != null)
+					foreach (PerspectivePoint p in e.NewItems)
+						p.parent = this;
+			};
+		}
+		public void Initialize(RDBeat beat)
+		{
+			if (XIndex != RDRoomIndex.None)
+				level.Add(new SetRoomContentMode() { Beat = beat, Y = 0, Mode = ContentModes.AspectFill });
+			if (XIndex != RDRoomIndex.None)
+				level.Add(new SetRoomContentMode() { Beat = beat, Y = 1, Mode = ContentModes.AspectFill });
+			if (XIndex != RDRoomIndex.None)
+				level.Add(new SetRoomContentMode() { Beat = beat, Y = 2, Mode = ContentModes.AspectFill });
+		}
+		public void LookFrom(RDPointN3 p, RDBeat beat)
+		{
+			var result = viewer.LookFrom(p);
+			lastLook = result;
+			if (XIndex != RDRoomIndex.None)
+			{
+				MoveRoom mrx = result.X.GetMoveRoom();
+				mrx.Beat = beat;
+				mrx.Y = XIndex.Value;
+				mrx.Duration = 0;
+				level.Add(mrx);
+			}
+			if (YIndex != RDRoomIndex.None)
+			{
+				MoveRoom mry = result.Y.GetMoveRoom();
+				mry.Beat = beat;
+				mry.Y = YIndex.Value;
+				mry.Duration = 0;
+				level.Add(mry);
+			}
+			if (ZIndex != RDRoomIndex.None)
+			{
+				MoveRoom mrz = result.Z.GetMoveRoom();
+				mrz.Beat = beat;
+				mrz.Y = ZIndex.Value;
+				mrz.Duration = 0;
+				level.Add(mrz);
+			}
+		}
+		public void LookFrom(RDPointN3 p, RDBeat beat, float duration, int frameCount, EaseType ease = EaseType.Linear)
+		{
+			Vector3 oc = viewer.Camera.ToVector3();
+			Vector3 cc = p.ToVector3();
+			beat = new(level.Calculator, beat);
+			for (int i = 0; i < frameCount; i++)
+			{
+				RDBeat b = beat + duration * (i / (float)(frameCount - 1));
+				RDPointN3 curp = Vector3.Lerp(oc, cc, (float)ease.Calculate(i / (float)(frameCount - 1))).ToRDPointN3();
+				LookFrom(curp, b);
+				foreach (var point in Points)
+				{
+					point.MoveTo(point.currentPoint, b, 0, EaseType.Linear);
+				}
+			}
 		}
 	}
 }

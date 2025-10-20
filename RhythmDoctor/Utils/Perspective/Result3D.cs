@@ -1,6 +1,6 @@
 ﻿namespace RhythmBase.RhythmDoctor.Utils.Perspective
 {
-	public struct Result<T> where T : IResult
+	public record struct Result3D<T>
 	{
 		public T X;
 		public T Y;
