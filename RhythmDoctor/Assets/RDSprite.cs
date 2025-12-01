@@ -264,7 +264,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 			/// <summary>
 			/// The list of frame indexes for expression.
 			/// </summary>
-			public List<int> Frames { get; set; } = [];
+			public CircularList<int> Frames { get; set; } = [];
 			/// <summary>
 			/// The start frame of the cycle for the expression.
 			/// </summary>
