@@ -1,4 +1,5 @@
-﻿using RhythmBase.RhythmDoctor.Components;
+﻿using RhythmBase.Global.Extensions;
+using RhythmBase.RhythmDoctor.Components;
 using RhythmBase.RhythmDoctor.Events;
 namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
 {
@@ -8,25 +9,26 @@ namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
 	}
 	public record struct OneshotPulseHit()
 	{
-		public float Interval { get; set; }
-		public float Offset { get; set; }
-		public float[] Pulses = [];
+		public float Beat { get; set; } // 击打时间点
+		public float Offset { get; set; } // 冰冻拍和灼热拍
+		public float[] Pulses { get; set; } = []; // 脉冲时间点，相对于击打时间点的偏移
+		public int Subdivision { get; set; } = 0; // 脉冲细分
 		public bool Skip { get; set; } = false;
 		public static OneshotPulseHit operator <<(OneshotPulseHit hit, float delta)
 		{
-			hit.Offset -= delta;
+			hit.Beat -= delta;
 			return hit;
 		}
 		public static OneshotPulseHit operator >>(OneshotPulseHit hit, float delta)
 		{
-			hit.Offset += delta;
+			hit.Beat += delta;
 			return hit;
 		}
 		public OneshotPulseHit Copy()
 		{
 			return new OneshotPulseHit()
 			{
-				Interval = Interval,
+				Beat = Beat,
 				Offset = Offset,
 				Pulses = [.. Pulses],
 				Skip = Skip
@@ -35,10 +37,9 @@ namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
 	}
 	public class OneshotHitPattern
 	{
-		private readonly OneshotPulseHit[] _private;
+		private readonly OneshotPulseHit[] _template;
 		private readonly SortedList<int, OneshotPulseHit[]> _cache = [];
 		public float Length { get; private init; }
-		public int Loop { get; set; } = 1;
 		/// <summary>
 		/// Gets or sets the <see cref="OneshotPulseHit"/> at the specified loop and index.
 		/// </summary>
@@ -59,7 +60,7 @@ namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
 					throw new ArgumentOutOfRangeException(nameof(index), "Index must be non-negative.");
 				if (_cache.TryGetValue(loop, out var cached))
 					return cached[index];
-				cached = [.. _private.Select(i => i.Copy())];
+				cached = [.. _template.Select(i => i.Copy())];
 				_cache.Add(loop, cached);
 				return cached[index];
 			}
@@ -75,7 +76,7 @@ namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
 				}
 				else
 				{
-					cached = [.. _private.Select(i => i.Copy())];
+					cached = [.. _template.Select(i => i.Copy())];
 					cached[index] = value;
 					_cache.Add(loop, cached);
 				}
@@ -95,9 +96,9 @@ namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
 		/// "- .- -. "
 		/// </code>
 		/// </param>
-		/// <param name="length">The duration of the pattern, in seconds. Must be a positive value.</param>
+		/// <param name="barLength">The duration of the pattern, in seconds. Must be a positive value.</param>
 		/// <returns>A new <see cref="OneshotHitPattern"/> instance configured with the specified pattern and length.</returns>
-		public OneshotHitPattern(string pattern, float length)
+		public OneshotHitPattern(string pattern, float barLength)
 		{
 			List<int> pulses = [];
 			List<OneshotPulseHit> hits = [];
@@ -112,9 +113,8 @@ namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
 					case '.':
 						hits.Add(new()
 						{
-							Interval = length / pattern.Length,
-							Offset = i * (length / pattern.Length),
-							Pulses = [.. pulses.Select(p => (p - i) * (length / pattern.Length))]
+							Beat = i * (barLength / pattern.Length),
+							Pulses = [.. pulses.Select(p => (p - i) * (barLength / pattern.Length))]
 						});
 						break;
 					case ' ':
@@ -123,18 +123,23 @@ namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
 						throw new ArgumentException("Pattern can only contain '-', '.', and ' ' characters.");
 				}
 			}
-			_private = [.. hits];
-			Length = length;
+			_template = [.. hits];
+			Length = barLength;
 		}
 	}
 	public static class OneshotHelper
 	{
 		public static void AddOneshotHitPattern(
-			this RDLevel e,
+			this RDLevel level,
+			Row e,
+			RDBeat start,
 			OneshotHitPattern pattern,
 			bool addNurseSay = true)
 		{
-
+			if(e.RowType != RowTypes.Oneshot)
+				throw new InvalidOperationException("Can only add oneshot hit patterns to oneshot rows.");
+			start = new(level.Calculator, start);
+			
 		}
 	}
 }
