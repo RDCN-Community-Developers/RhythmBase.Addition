@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace RhythmBase.RhythmDoctor.Converters
 {
-	public class SpriteConverter : JsonConverter<RDSprite>
+	internal class SpriteConverter : JsonConverter<RDSprite>
 	{
 		public override RDSprite? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
 		{

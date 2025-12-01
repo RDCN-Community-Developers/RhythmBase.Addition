@@ -42,7 +42,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// Base layer
 		/// </summary>
 		[JsonIgnore]
-		public SKBitmap ImageBase { get; set; }
+		public SKBitmap? ImageBase { get; set; }
 		/// <summary>
 		/// Glow layer
 		/// </summary>
@@ -235,7 +235,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 			string WithoutExtension = Path.Combine(file.Directory?.FullName ?? "", Path.GetFileNameWithoutExtension(file.Name));
 			if (settings.WithImage)
 			{
-				ImageBase.Save(WithoutExtension + ".png");
+				ImageBase?.Save(WithoutExtension + ".png");
 				ImageGlow?.Save(WithoutExtension + "_glow.png");
 				ImageOutline?.Save(WithoutExtension + "_outline.png");
 				ImageFreeze?.Save(WithoutExtension + "_freeze.png");
