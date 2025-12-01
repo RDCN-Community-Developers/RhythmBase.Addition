@@ -9,6 +9,7 @@ namespace RhythmBase.RhythmDoctor.Utils.Perspective
 		public float ElementAngle { get; internal set; }
 		public RDPointN Direction { get; internal set; }
 		public float CameraValue { get; internal set; }
+		public RDPointN Projection { get; internal set; }
 		public readonly MoveRoom GetMoveRoom()
 		{
 			return new()

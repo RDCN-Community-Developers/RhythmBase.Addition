@@ -1,18 +1,13 @@
 ﻿using RhythmBase.Global.Components;
 using RhythmBase.Global.Components.Easing;
 using RhythmBase.RhythmDoctor.Components;
-using RhythmBase.RhythmDoctor.Events;
 using RhythmBase.RhythmDoctor.Extensions;
-using System.Collections.ObjectModel;
 using System.Numerics;
 
 namespace RhythmBase.RhythmDoctor.Utils.Perspective
 {
 	public class Viewer
 	{
-		public HashSet<Decoration> XDecorations { get; } = [];
-		public HashSet<Decoration> YDecorations { get; } = [];
-		public HashSet<Decoration> ZDecorations { get; } = [];
 		public RDPointN3 Camera { get; private set; }
 		//public float Zoom { get; private set; } = 1.0f;
 		public Viewer()
@@ -48,6 +43,7 @@ namespace RhythmBase.RhythmDoctor.Utils.Perspective
 			{
 				X = new()
 				{
+					Projection = new RDPointN(tx.X, tx.Y),
 					RoomDirecion = new RDPointN(vx.X, -vx.Y),
 					ElementAngle = rx * bx * bz,
 					Direction = new RDPointN(tx.X, tx.Y),
@@ -55,6 +51,7 @@ namespace RhythmBase.RhythmDoctor.Utils.Perspective
 				},
 				Y = new()
 				{
+					Projection = new RDPointN(ty.X, ty.Y),
 					RoomDirecion = new RDPointN(vy.X, vy.Y),
 					ElementAngle = ry * bx * by,
 					Direction = new RDPointN(ty.X, ty.Y),
@@ -62,6 +59,7 @@ namespace RhythmBase.RhythmDoctor.Utils.Perspective
 				},
 				Z = new()
 				{
+					Projection = new RDPointN(tz.X, tz.Y),
 					RoomDirecion = new RDPointN(vz.X, -vz.Y),
 					ElementAngle = rz * bz * by,
 					Direction = new RDPointN(tz.X, tz.Y),
@@ -143,122 +141,6 @@ namespace RhythmBase.RhythmDoctor.Utils.Perspective
 				yaw = MathF.Atan2(v.X, v.Z);
 			float pitch = MathF.Atan2(v.Y, proj);
 			return new Vector2(yaw, pitch);
-		}
-	}
-	public class PerspectivePoint
-	{
-		internal Builder? parent;
-		internal RDPointN3 currentPoint;
-		public List<Decoration> XDecorations { get; set; } = [];
-		public List<Decoration> YDecorations { get; set; } = [];
-		public List<Decoration> ZDecorations { get; set; } = [];
-		public void MoveTo(RDPointN3 p, RDBeat beat, float duration, EaseType ease = EaseType.Linear)
-		{
-			if (parent?.lastLook is not Result3D<Room> look)
-				return;
-			currentPoint = p;
-			var po = look.PointAt(p);
-			foreach (var dec in XDecorations)
-			{
-				Move m = po.X.GetMove();
-				m.Beat = beat;
-				m.Duration = duration;
-				m.Ease = ease;
-				dec.Add(m);
-			}
-			foreach (var dec in YDecorations)
-			{
-				Move m = po.Y.GetMove();
-				m.Beat = beat;
-				m.Duration = duration;
-				m.Ease = ease;
-				dec.Add(m);
-			}
-			foreach (var dec in ZDecorations)
-			{
-				Move m = po.Z.GetMove();
-				m.Beat = beat;
-				m.Duration = duration;
-				m.Ease = ease;
-				dec.Add(m);
-			}
-		}
-	}
-	public class Builder
-	{
-		private readonly RDLevel level;
-		private readonly Viewer viewer = new();
-		internal Result3D<Room>? lastLook;
-		public RDSingleRoom XIndex { get; set; } = RDRoomIndex.None;
-		public RDSingleRoom YIndex { get; set; } = RDRoomIndex.None;
-		public RDSingleRoom ZIndex { get; set; } = RDRoomIndex.None;
-		public ObservableCollection<PerspectivePoint> Points { get; } = [];
-		public Builder(RDLevel level)
-		{
-			this.level = level;
-			Points.CollectionChanged += (s, e) =>
-			{
-				if (e.OldItems != null)
-					foreach (PerspectivePoint p in e.OldItems)
-						p.parent = null;
-				if (e.NewItems != null)
-					foreach (PerspectivePoint p in e.NewItems)
-						p.parent = this;
-			};
-		}
-		public void Initialize(RDBeat beat)
-		{
-			if (XIndex != RDRoomIndex.None)
-				level.Add(new SetRoomContentMode() { Beat = beat, Y = 0, Mode = ContentModes.AspectFill });
-			if (XIndex != RDRoomIndex.None)
-				level.Add(new SetRoomContentMode() { Beat = beat, Y = 1, Mode = ContentModes.AspectFill });
-			if (XIndex != RDRoomIndex.None)
-				level.Add(new SetRoomContentMode() { Beat = beat, Y = 2, Mode = ContentModes.AspectFill });
-		}
-		public void LookFrom(RDPointN3 p, RDBeat beat)
-		{
-			var result = viewer.LookFrom(p);
-			lastLook = result;
-			if (XIndex != RDRoomIndex.None)
-			{
-				MoveRoom mrx = result.X.GetMoveRoom();
-				mrx.Beat = beat;
-				mrx.Y = XIndex.Value;
-				mrx.Duration = 0;
-				level.Add(mrx);
-			}
-			if (YIndex != RDRoomIndex.None)
-			{
-				MoveRoom mry = result.Y.GetMoveRoom();
-				mry.Beat = beat;
-				mry.Y = YIndex.Value;
-				mry.Duration = 0;
-				level.Add(mry);
-			}
-			if (ZIndex != RDRoomIndex.None)
-			{
-				MoveRoom mrz = result.Z.GetMoveRoom();
-				mrz.Beat = beat;
-				mrz.Y = ZIndex.Value;
-				mrz.Duration = 0;
-				level.Add(mrz);
-			}
-		}
-		public void LookFrom(RDPointN3 p, RDBeat beat, float duration, int frameCount, EaseType ease = EaseType.Linear)
-		{
-			Vector3 oc = viewer.Camera.ToVector3();
-			Vector3 cc = p.ToVector3();
-			beat = new(level.Calculator, beat);
-			for (int i = 0; i < frameCount; i++)
-			{
-				RDBeat b = beat + duration * (i / (float)(frameCount - 1));
-				RDPointN3 curp = Vector3.Lerp(oc, cc, (float)ease.Calculate(i / (float)(frameCount - 1))).ToRDPointN3();
-				LookFrom(curp, b);
-				foreach (var point in Points)
-				{
-					point.MoveTo(point.currentPoint, b, 0, EaseType.Linear);
-				}
-			}
 		}
 	}
 }

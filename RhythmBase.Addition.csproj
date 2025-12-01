@@ -24,7 +24,7 @@
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="NAudio.Vorbis" Version="1.5.0" />
     <PackageReference Include="PrimitiveSharp.Core" Version="1.0.3" />
-    <PackageReference Include="RhythmBase" Version="1.2.8" />
+    <PackageReference Include="RhythmBase" Version="1.2.15" />
     <PackageReference Include="SkiaSharp" Version="3.119.1" />
     <PackageReference Include="System.Text.Json" Version="10.0.0-rc.2.25502.107" />
   </ItemGroup>
