@@ -1,4 +1,5 @@
-﻿using RhythmBase.Global.Events;
+﻿using RhythmBase.Global.Components.Vector;
+using RhythmBase.Global.Events;
 using RhythmBase.RhythmDoctor.Components;
 using RhythmBase.RhythmDoctor.Events;
 using System.Numerics;
@@ -22,13 +23,13 @@ namespace RhythmBase.RhythmDoctor.Utils
 			/// <summary>
 			/// The position of the particle in 3D space.
 			/// </summary>
-			public Vector3 Position;
+			public RDPointN3 Position;
 		}
 		private class ParticleAction
 		{
 			public RDBeat Beat;
 			public RDAnimation Animation;
-			public required Func<Vector3, BaseDecorationAction> Action;
+			public required Func<RDPointN3, BaseDecorationAction> Action;
 			public bool Flushed = false;
 		}
 		private readonly RDLevel level;
@@ -57,7 +58,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 					Room = room,
 					Visible = false,
 				},
-				Position = new Vector3(
+				Position = new RDPointN3(
 					random.NextSingle(),
 					random.NextSingle(),
 					(i - startDepth) / (float)count)
@@ -84,7 +85,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 		{
 			for (int i = 0; i < particles.Count; i++)
 			{
-				particles[i].Position = new Vector3(
+				particles[i].Position = new RDPointN3(
 					Random.NextSingle(),
 					Random.NextSingle(),
 					i / (float)particles.Count);
@@ -96,7 +97,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 		/// </summary>
 		/// <param name="animation">The animation associated with the action.</param>
 		/// <param name="action">A function that generates a decoration action based on a particle's position.</param>
-		public void AddAction(RDBeat beat, RDAnimation animation, Func<Vector3, BaseDecorationAction> action)
+		public void AddAction(RDBeat beat, RDAnimation animation, Func<RDPointN3, BaseDecorationAction> action)
 		{
 			actions.Add(new ParticleAction()
 			{
@@ -129,6 +130,6 @@ namespace RhythmBase.RhythmDoctor.Utils
 				}
 			}
 		}
-		public Events.Particle GetParticle(Func<Vector3, BaseDecorationAction> action) => new(this, action);
+		public Events.Particle GetParticle(Func<RDPointN3, BaseDecorationAction> action) => new(this, action);
 	}
 }

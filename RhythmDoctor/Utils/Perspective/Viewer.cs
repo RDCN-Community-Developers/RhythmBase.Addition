@@ -1,6 +1,5 @@
-﻿using RhythmBase.Global.Components;
-using RhythmBase.Global.Components.Easing;
-using RhythmBase.RhythmDoctor.Components;
+﻿using RhythmBase.Global.Components.Easing;
+using RhythmBase.Global.Components.Vector;
 using RhythmBase.RhythmDoctor.Extensions;
 using System.Numerics;
 
@@ -93,7 +92,7 @@ namespace RhythmBase.RhythmDoctor.Utils.Perspective
 			Vector3 vproj = value - nDir * comp;
 			if (vproj.LengthSquared() <= EPS_SQ)
 				return Vector2.Zero;
-			Vector3 refAxis = new Vector3(0f, 1f, 0f);
+			Vector3 refAxis = new(0f, 1f, 0f);
 			if (Vector3.Cross(refAxis, nDir).LengthSquared() <= EPS_SQ)
 				refAxis = new Vector3(1f, 0f, 0f);
 			Vector3 u = refAxis - nDir * Vector3.Dot(refAxis, nDir);

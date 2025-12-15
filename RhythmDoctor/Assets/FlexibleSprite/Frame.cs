@@ -42,6 +42,6 @@ namespace RhythmBase.RhythmDoctor.Assets.FlexibleSprite
 				Math.Max(b.Height, Math.Max(g.Height, o.Height))
 			);
 		}
-		public static implicit operator Frame(SKBitmap bitmap) => new Frame(bitmap);
+		public static implicit operator Frame(SKBitmap bitmap) => new(bitmap);
 	}
 }

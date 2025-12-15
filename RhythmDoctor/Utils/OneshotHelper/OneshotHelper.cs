@@ -136,7 +136,7 @@ namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
 			OneshotHitPattern pattern,
 			bool addNurseSay = true)
 		{
-			if(e.RowType != RowTypes.Oneshot)
+			if(e.RowType != RowType.Oneshot)
 				throw new InvalidOperationException("Can only add oneshot hit patterns to oneshot rows.");
 			start = new(level.Calculator, start);
 			

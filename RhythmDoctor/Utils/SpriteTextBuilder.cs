@@ -1,4 +1,4 @@
-﻿using RhythmBase.Global.Components;
+﻿using RhythmBase.Global.Components.Vector;
 using RhythmBase.RhythmDoctor.Assets;
 using RhythmBase.RhythmDoctor.Assets.FlexibleSprite;
 using SkiaSharp;

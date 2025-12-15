@@ -1,4 +1,4 @@
-﻿using RhythmBase.Global.Components;
+﻿using RhythmBase.Global.Components.Vector;
 using RhythmBase.RhythmDoctor.Events;
 
 namespace RhythmBase.RhythmDoctor.Utils.Perspective
@@ -19,6 +19,6 @@ namespace RhythmBase.RhythmDoctor.Utils.Perspective
 			};
 		}
 		private static float Length(RDPointN p) =>
-			(float)Math.Sqrt(p.X * p.X + p.Y * p.Y);
+				(float)Math.Sqrt(p.X * p.X + p.Y * p.Y);
 	}
 }

@@ -1,15 +1,12 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Serialization;
 using RhythmBase.Global.Assets;
 using RhythmBase.Global.Components;
+using RhythmBase.Global.Components.Vector;
 using RhythmBase.Global.Extensions;
 using RhythmBase.Global.Settings;
 using RhythmBase.RhythmDoctor.Converters;
-using RhythmBase.RhythmDoctor.Extensions;
 using SkiaSharp;
-using System;
 using System.Buffers;
 using System.Text.Json;
 namespace RhythmBase.RhythmDoctor.Assets
@@ -179,19 +176,19 @@ namespace RhythmBase.RhythmDoctor.Assets
 		{
 			int column = source.Width / size.Width;
 			SKPointI leftTop = new(
-				(int)(index % column * size.Width),
-				(int)(index / column * size.Height));
+					(int)(index % column * size.Width),
+					(int)(index / column * size.Height));
 			return new(leftTop.X,
-					   leftTop.Y,
-					   leftTop.X + size.Width,
-					   leftTop.Y + size.Height);
+								 leftTop.Y,
+								 leftTop.X + size.Width,
+								 leftTop.Y + size.Height);
 		}
 		/// <summary>
 		/// Get the cropped area on the image for each frame of this expression.
 		/// </summary>
 		/// <returns>An array of rectangles indicating each crop area.</returns>
 		public SKRectI[] GetFrameRects(Expression expression) => (from i in expression.Frames
-																  select GetFrameRect(i)).ToArray();
+																															select GetFrameRect(i)).ToArray();
 		/// <summary>
 		/// Add a blank expression.
 		/// </summary>
@@ -246,12 +243,12 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// <inheritdoc/>
 		public override string ToString() => string.IsNullOrEmpty(Name) ? DisplayName : Name;
 		private static readonly string[] characterExpressionNames =
-			[
-				"neutral",
-				"happy",
-				"barely",
-				"missed"
-			];
+				[
+						"neutral",
+								"happy",
+								"barely",
+								"missed"
+				];
 		/// <summary>
 		/// An expression.
 		/// </summary>

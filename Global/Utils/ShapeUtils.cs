@@ -1,6 +1,4 @@
-﻿using PrimitiveSharp.Core;
-using RhythmBase.Global.Components;
-using RhythmBase.Global.Extensions;
+﻿using RhythmBase.Global.Components.Vector;
 using SkiaSharp;
 
 namespace RhythmBase.Global.Utils
@@ -177,7 +175,7 @@ namespace RhythmBase.Global.Utils
 			return new RDPointN(l1.X + t * dx, l1.Y + t * dy);
 		}
 		public static bool GetPerpendicularIntersectionPoint(
-			RDPointN l1f, RDPointN l2, RDPointN nl1, RDPointN nl2, out RDPointN result)
+				RDPointN l1f, RDPointN l2, RDPointN nl1, RDPointN nl2, out RDPointN result)
 		{
 			result = default;
 

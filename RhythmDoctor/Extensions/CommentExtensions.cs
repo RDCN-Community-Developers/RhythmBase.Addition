@@ -13,7 +13,7 @@ namespace RhythmBase.RhythmDoctor.Extensions
 		}
 		public static IEnumerable<IBaseEvent> InCommentRange<TEvent>(this OrderedEventCollection<TEvent> e, Func<string, bool> isCommentAvaliable) where TEvent : IBaseEvent
 		{
-			Tabs? tab = null;
+			Tab? tab = null;
 			Comment? start = null;
 			Comment? end = null;
 			List<IBaseEvent> bufferLower = [];

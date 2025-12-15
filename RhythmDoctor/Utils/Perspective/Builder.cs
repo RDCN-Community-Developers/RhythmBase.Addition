@@ -1,4 +1,5 @@
 ﻿using RhythmBase.Global.Components.Easing;
+using RhythmBase.Global.Components.Vector;
 using RhythmBase.RhythmDoctor.Components;
 using RhythmBase.RhythmDoctor.Events;
 using RhythmBase.RhythmDoctor.Extensions;
@@ -32,11 +33,11 @@ namespace RhythmBase.RhythmDoctor.Utils.Perspective
 		public void Initialize(RDBeat beat)
 		{
 			if (XIndex != RDRoomIndex.None)
-				level.Add(new SetRoomContentMode() { Beat = beat, Y = 0, Mode = ContentModes.AspectFill });
+				level.Add(new SetRoomContentMode() { Beat = beat, Y = 0, Mode = ContentMode.AspectFill });
 			if (XIndex != RDRoomIndex.None)
-				level.Add(new SetRoomContentMode() { Beat = beat, Y = 1, Mode = ContentModes.AspectFill });
+				level.Add(new SetRoomContentMode() { Beat = beat, Y = 1, Mode = ContentMode.AspectFill });
 			if (XIndex != RDRoomIndex.None)
-				level.Add(new SetRoomContentMode() { Beat = beat, Y = 2, Mode = ContentModes.AspectFill });
+				level.Add(new SetRoomContentMode() { Beat = beat, Y = 2, Mode = ContentMode.AspectFill });
 		}
 		public void LookFrom(RDPointN3 p, RDBeat beat)
 		{

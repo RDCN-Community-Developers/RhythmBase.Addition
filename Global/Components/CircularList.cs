@@ -1,6 +1,6 @@
 ﻿namespace RhythmBase.Global.Components
 {
-    public class CircularList<T> : List<T>
+	public class CircularList<T> : List<T>
 	{
 		public new T this[int index]
 		{

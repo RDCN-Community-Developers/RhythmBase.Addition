@@ -1,8 +1,10 @@
 ﻿using RhythmBase.Global.Assets;
 using RhythmBase.Global.Components;
+using RhythmBase.Global.Components.Vector;
 using RhythmBase.RhythmDoctor.Assets;
 using RhythmBase.RhythmDoctor.Components;
 using RhythmBase.RhythmDoctor.Utils.Perspective;
+using SkiaSharp;
 using System.Numerics;
 
 namespace RhythmBase.RhythmDoctor.Extensions
@@ -37,8 +39,24 @@ namespace RhythmBase.RhythmDoctor.Extensions
 				return null;
 			return (IAssetFile?)manager.Get<RDWaveFile>(ch) ?? manager.Get<RDBuiltInAudio>(ch);
 		}
-		public static RDPointN3 ToRDPointN3(this Vector3 vec) => new RDPointN3(vec.X, vec.Y, vec.Z);
-		public static Vector3 ToVector3(this RDPointN3 point) => new Vector3(point.X, point.Y, point.Z);
+		public static RDPointN3 ToRDPointN3(this Vector3 vec) => new(vec.X, vec.Y, vec.Z);
+		public static Vector3 ToVector3(this RDPointN3 point) => new(point.X, point.Y, point.Z);
+		public static RDPointN ToRDPointN(this Vector2 vec) => new(vec.X, vec.Y);
+		public static Vector2 ToVector2(this RDPointN point) => new(point.X, point.Y);
+		public static RDPointN ToRDPointN(this SKPoint point) => new(point.X, point.Y);
+		public static SKPoint ToSKPoint(this RDPointN point) => new(point.X, point.Y);
+		public static RDPointNI ToRDPointNI (this SKPointI point) => new(point.X, point.Y);
+		public static SKPointI ToSKPointI(this RDPointNI point) => new(point.X, point.Y);
+		public static RDSizeN ToRDSizeN(this SKSize size) => new(size.Width, size.Height);
+		public static SKSize ToSKSize(this RDSizeN size) => new(size.Width, size.Height);
+		public static RDSizeNI ToRDSizeNI(this SKSizeI size) => new(size.Width, size.Height);	
+		public static SKSizeI ToSKSizeI(this RDSizeNI size) => new(size.Width, size.Height);
+		public static RDRectN ToRDRectN(this SKRect rect) => new(rect.Left, rect.Top, rect.Right, rect.Bottom);
+		public static SKRect ToSKRect(this RDRectN rect) => new(rect.Left, rect.Top, rect.Right, rect.Bottom);
+		public static RDRectNI ToRDRectNI(this SKRectI rect) => new(rect.Left, rect.Top, rect.Right, rect.Bottom);
+		public static SKRectI ToSKRectI(this RDRectNI rect) => new(rect.Left, rect.Top, rect.Right, rect.Bottom);
+		public static RDColor ToRDColor(this SKColor color) => RDColor.FromRgba(color.Red, color.Green, color.Blue, color.Alpha);
+		public static SKColor ToSKColor(this RDColor color) => new(color.R, color.G, color.B, color.A);
 		public static Result3D<Utils.Perspective.Plane> PointAt(this Result3D<Room> result, RDPointN3 pb)
 		{
 			var p = new RDPointN3

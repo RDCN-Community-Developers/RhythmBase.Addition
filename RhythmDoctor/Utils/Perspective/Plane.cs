@@ -1,5 +1,4 @@
-﻿using RhythmBase.Global.Components;
-using RhythmBase.RhythmDoctor.Components;
+﻿using RhythmBase.Global.Components.Vector;
 using RhythmBase.RhythmDoctor.Events;
 
 namespace RhythmBase.RhythmDoctor.Utils.Perspective
@@ -14,7 +13,7 @@ namespace RhythmBase.RhythmDoctor.Utils.Perspective
 			return new Move
 			{
 				Angle = Angle * 180f / float.Pi,
-				Pivot = new(0,0),
+				Pivot = new(0, 0),
 				Position = new(50 + Position.X / 3.52f, 50 + Position.Y / 1.98f),
 				Scale = Scale,
 			};

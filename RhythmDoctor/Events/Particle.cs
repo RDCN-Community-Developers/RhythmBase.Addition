@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using RhythmBase.Global.Components.Vector;
 using RhythmBase.Global.Events;
 using RhythmBase.RhythmDoctor.Utils;
 using System.Numerics;
@@ -7,14 +8,14 @@ namespace RhythmBase.RhythmDoctor.Events
 {
 	public class Particle : MacroEvent<RDAnimation>
 	{
-		private readonly Func<Vector3, BaseDecorationAction> action;
+		private readonly Func<RDPointN3, BaseDecorationAction> action;
 		private readonly ParticleGenerator generator;
 		public RDAnimation Animation
 		{
 			get => Data;
 			set => Data = value;
 		}
-		internal Particle(ParticleGenerator generator, Func<Vector3, BaseDecorationAction> action)
+		internal Particle(ParticleGenerator generator, Func<RDPointN3, BaseDecorationAction> action)
 		{
 			this.generator = generator;
 			this.action = action;

@@ -1,12 +1,7 @@
-﻿using RhythmBase.Global.Components;
+﻿using RhythmBase.Global.Components.Vector;
 using RhythmBase.Global.Extensions;
 using RhythmBase.RhythmDoctor.Events;
 using SkiaSharp;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RhythmBase.RhythmDoctor.Utils
 {
@@ -36,7 +31,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 			canvas.Clear(SKColors.White);
 			bitmap.Save(filename);
 		}
-		public static Move[] GetMovesOfTriangles(RDRotatedRectN[] triangles, int width,int height)
+		public static Move[] GetMovesOfTriangles(RDRotatedRectN[] triangles, int width, int height)
 		{
 			Move[] moves = new Move[triangles.Length];
 			for (int i = 0; i < triangles.Length; i++)
