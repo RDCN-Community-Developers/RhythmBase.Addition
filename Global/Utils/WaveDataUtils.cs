@@ -3,7 +3,10 @@ using NAudio.Vorbis;
 using NAudio.Wave;
 using RhythmBase.Global.Extensions;
 using SkiaSharp;
-using System.Data;
+using System;
+using System.IO;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace RhythmBase.Global.Utils
 {
@@ -26,9 +29,9 @@ namespace RhythmBase.Global.Utils
 		/// <returns>The wave stream of the audio file.</returns>
 		public static WaveStream GetWaveStream(string filepath)
 		{
-			if (Path.Exists(filepath))
+			if (File.Exists(filepath))
 			{
-				string extension = Path.GetExtension(filepath);
+				string extension = Path.GetExtension(filepath).ToLowerInvariant();
 				return extension switch
 				{
 					".ogg" => new VorbisWaveReader(filepath),
@@ -50,9 +53,9 @@ namespace RhythmBase.Global.Utils
 		public static float[][] GetTimeDomain(this WaveStream stream)
 		{
 			int c = stream.WaveFormat.Channels;
-			List<List<float>> result = [];
+			List<List<float>> result = new List<List<float>>();
 			for (int i = 0; i < c; i++)
-				result.Add([]);
+				result.Add(new List<float>());
 
 			ISampleProvider provider = stream.ToSampleProvider();
 			float[] floats = new float[c];
@@ -69,17 +72,15 @@ namespace RhythmBase.Global.Utils
 		}
 		private static float[,] MelSpectrogram(float[] signal, int sampleRate)
 		{
-			int frames = (signal.Length - fft) / hop + 1;
+			int frames = Math.Max(0, (signal.Length - fft) / hop + 1);
 			float[,] mel = new float[frames, nMels];
 
-			// 预计算梅尔滤波器组
 			var mfb = MelFilterBank(sampleRate, fft, nMels, fmin, fmax);
-			//mfb.OutputData2DBitmap("mel.png", SKColors.Green, SKColors.Black);
 
 			for (int f = 0; f < frames; f++)
 			{
 				float[] frame = new float[fft];
-				Array.Copy(signal, f * hop, frame, 0, fft);
+				Array.Copy(signal, f * hop, frame, 0, Math.Min(fft, signal.Length - f * hop));
 
 				float[] mag = MagnitudeSpectrum(frame);
 				for (int m = 0; m < nMels; m++)
@@ -101,45 +102,180 @@ namespace RhythmBase.Global.Utils
 			}
 			return flux;
 		}
-		public static double[] EstimateBPM(float[] spectralFlux, int valueCount, double minbpm = 40, double maxbpm = 240)
+		public static double[] EstimateBPM(float[] spectralFlux, int valueCount, double minbpm = 50, double maxbpm = 240)
 		{
-			double maxLag = fps * 10; // 最大周期 10 秒
-			double minLag = 60.0 * fps / maxbpm;
-			double[] autocorrelation = new double[((int)maxLag-1)];
+			if (spectralFlux == null || spectralFlux.Length < 3)
+				return Array.Empty<double>();
 
-			for (int lag = 1; lag < maxLag; lag++)
+			int N = spectralFlux.Length;
+			double[] x = new double[N];
+			for (int i = 0; i < N; i++) x[i] = spectralFlux[i];
+			double mean = x.Average();
+			for (int i = 0; i < N; i++) x[i] -= mean;
+			for (int i = 0; i < N; i++) x[i] = Math.Max(0.0, x[i]);
+			double maxv = x.Max();
+			if (maxv > 0)
+				for (int i = 0; i < N; i++) x[i] /= maxv;
+
+			int minLag = (int)Math.Floor(60.0 * fps / maxbpm);
+			int maxLag = (int)Math.Ceiling(60.0 * fps / minbpm);
+			minLag = Math.Max(1, minLag);
+			maxLag = Math.Min(maxLag, N - 1);
+			if (maxLag <= minLag)
+				return Array.Empty<double>();
+
+			double[] autocorr = new double[maxLag + 1]; // index by lag
+			for (int lag = 1; lag <= maxLag; lag++)
 			{
 				double sum = 0;
-				for (int t = 0; t < spectralFlux.Length - lag; t++)
-				{
-					sum += spectralFlux[t] * spectralFlux[t + lag];
-				}
-				autocorrelation[lag-1] = sum / (spectralFlux.Length - lag);
-
+				int limit = N - lag;
+				for (int t = 0; t < limit; t++)
+					sum += x[t] * x[t + lag];
+				autocorr[lag] = (limit > 0) ? sum / limit : 0.0;
 			}
 
-			double[] copy = new double[autocorrelation.Length];
-			//autocorrelation.CopyTo(copy, 0);
-			//for(int i=0;i<copy.Length;i++)
-			//{
-			//	if ((i == 0 || (i > 0 && autocorrelation[i - 1] < autocorrelation[i])) &&
-			//		(i == copy.Length - 1 || (i < copy.Length - 1 && autocorrelation[i + 1] < autocorrelation[i])))
-			//	{
-			//		copy[i] = autocorrelation[i];
-			//	}
-			//}
-			autocorrelation.Output1DDataBitmap("out3.png", 500, SKColors.Green, SKColors.Black);
+			var peaks = new List<(int lag, double value)>();
+			for (int lag = minLag; lag <= maxLag; lag++)
+			{
+				double val = autocorr[lag];
+				double left = (lag - 1 >= 1) ? autocorr[lag - 1] : double.MinValue;
+				double right = (lag + 1 <= maxLag) ? autocorr[lag + 1] : double.MinValue;
+				if (val > left && val > right)
+					peaks.Add((lag, val));
+			}
 
-			maxLag = 60.0 * fps / minbpm;
+			if (peaks.Count == 0)
+			{
+				for (int lag = minLag; lag <= maxLag; lag++)
+					peaks.Add((lag, autocorr[lag]));
+			}
 
-			double[] lags = autocorrelation[(int)double.Floor(minLag)..(int)double.Ceiling(maxLag)];
-			double[] bestMatches = [.. lags.Order().Take(valueCount)];
-			double[] bpms = [.. bestMatches.Select(i=> 60.0 * fps / Array.IndexOf(autocorrelation, i))];
+			var top = peaks.OrderByDescending(p => p.value).Take(valueCount).ToArray();
 
-			//int bestLag = Array.IndexOf(autocorrelation, autocorrelation.su.Max());
-			//double bpm = 60.0 * fps / bestLag;
+			var bpms = new List<double>();
+			foreach (var p in top)
+			{
+				int lag = p.lag;
+				double y0 = autocorr[lag];
+				double ym = (lag - 1 >= 1) ? autocorr[lag - 1] : 0.0;
+				double yp = (lag + 1 <= maxLag) ? autocorr[lag + 1] : 0.0;
+				double denom = (ym - 2 * y0 + yp);
+				double delta = 0.0;
+				if (Math.Abs(denom) > 1e-9)
+					delta = 0.5 * (ym - yp) / denom;
+				double refinedLag = lag + delta;
+				if (refinedLag <= 0) refinedLag = lag;
+				double bpm = 60.0 * fps / refinedLag;
+				bpms.Add(bpm);
+			}
 
-			return bpms;
+			return bpms.ToArray();
+		}
+		/// <summary>
+		/// Estimate BPM candidates and find best phase offset (first beat) for each candidate.
+		/// Returns array of tuples: (bpm, peakValue, firstBeatSeconds)
+		/// </summary>
+		public static (double bpm, double score, int firstBeatFrame, double firstBeatSec)[] EstimateBPMWithOffset(float[] spectralFlux, int valueCount, double minbpm = 40, double maxbpm = 240)
+		{
+			if (spectralFlux == null || spectralFlux.Length < 3)
+				return Array.Empty<(double, double, int, double)>();
+
+			int N = spectralFlux.Length;
+			double[] x = new double[N];
+			for (int i = 0; i < N; i++) x[i] = spectralFlux[i];
+			double mean = x.Average();
+			for (int i = 0; i < N; i++) x[i] -= mean;
+			for (int i = 0; i < N; i++) x[i] = Math.Max(0.0, x[i]);
+			double maxv = x.Max(); if (maxv > 0) for (int i = 0; i < N; i++) x[i] /= maxv;
+
+			double[] xsm = new double[N];
+			for (int i = 0; i < N; i++)
+			{
+				double a = x[i];
+				double b = (i - 1 >= 0) ? x[i - 1] : 0.0;
+				double c = (i + 1 < N) ? x[i + 1] : 0.0;
+				xsm[i] = (a + b + c) / 3.0;
+			}
+			double xsmStd = Math.Sqrt(Math.Max(1e-12, xsm.Select(v => v * v).Average()));
+
+			int minLag = (int)Math.Floor(60.0 * fps / maxbpm);
+			int maxLag = (int)Math.Ceiling(60.0 * fps / minbpm);
+			minLag = Math.Max(1, minLag);
+			maxLag = Math.Min(maxLag, N - 1);
+			if (maxLag <= minLag)
+				return Array.Empty<(double, double, int, double)>();
+
+			double[] autocorr = new double[maxLag + 1];
+			for (int lag = 1; lag <= maxLag; lag++)
+			{
+				double sum = 0; int limit = N - lag;
+				for (int t = 0; t < limit; t++) sum += x[t] * x[t + lag];
+				autocorr[lag] = (limit > 0) ? sum / limit : 0.0;
+			}
+
+			var peaks = new List<(int lag, double value)>();
+			for (int lag = minLag; lag <= maxLag; lag++)
+			{
+				double val = autocorr[lag];
+				double left = (lag - 1 >= 1) ? autocorr[lag - 1] : double.MinValue;
+				double right = (lag + 1 <= maxLag) ? autocorr[lag + 1] : double.MinValue;
+				if (val > left && val > right) peaks.Add((lag, val));
+			}
+			if (peaks.Count == 0) for (int lag = minLag; lag <= maxLag; lag++) peaks.Add((lag, autocorr[lag]));
+
+			var top = peaks.OrderByDescending(p => p.value).Take(valueCount).ToArray();
+			var results = new List<(double bpm, double score, int firstBeatFrame, double firstBeatSec)>();
+			foreach (var p in top)
+			{
+				int lag = p.lag;
+				double y0 = autocorr[lag];
+				double ym = (lag - 1 >= 1) ? autocorr[lag - 1] : 0.0;
+				double yp = (lag + 1 <= maxLag) ? autocorr[lag + 1] : 0.0;
+				double denom = (ym - 2 * y0 + yp);
+				double delta = 0.0;
+				if (Math.Abs(denom) > 1e-9) delta = 0.5 * (ym - yp) / denom;
+				double refinedLag = Math.Max(1.0, lag + delta);
+				double bpm = 60.0 * fps / refinedLag;
+
+				int intLag = (int)Math.Round(refinedLag);
+				if (intLag < 1) intLag = 1;
+
+				double bestOffsetScore = double.MinValue;
+				int bestOffset = 0;
+				for (int offset = 0; offset < intLag; offset++)
+				{
+					double scoreSum = 0.0; int count = 0;
+					for (int pos = offset; pos < N; pos += intLag)
+					{
+						double local = 0.0;
+						if (pos - 1 >= 0) local += 0.25 * xsm[pos - 1];
+						local += 0.5 * xsm[pos];
+						if (pos + 1 < N) local += 0.25 * xsm[pos + 1];
+						scoreSum += local;
+						count++;
+					}
+					if (count == 0) continue;
+					double avg = scoreSum / count;
+					double normScore = avg / (xsmStd + 1e-12);
+					if (normScore > bestOffsetScore) { bestOffsetScore = normScore; bestOffset = offset; }
+				}
+
+				int bestFrame = bestOffset;
+				double bestFrameVal = xsm[bestFrame];
+				for (int pos = bestOffset; pos < N; pos += intLag)
+				{
+					if (xsm[pos] > bestFrameVal)
+					{
+						bestFrameVal = xsm[pos];
+						bestFrame = pos;
+					}
+				}
+
+				double firstBeatSec = bestFrame / (double)fps;
+				results.Add((bpm, p.value * bestOffsetScore, bestFrame, firstBeatSec));
+			}
+
+			return results.ToArray();
 		}
 
 		/// <summary>
@@ -161,27 +297,30 @@ namespace RhythmBase.Global.Utils
 		/// <exception cref="NotSupportedException">The encoding format was not supported yet.</exception>
 		public static float[] GetAverageTimeDomain(this WaveStream stream)
 		{
-			List<float> result = [];
+			List<float> result = new List<float>();
 			int BytesPerSample = stream.WaveFormat.BitsPerSample / 8;
-			byte[] sample = new byte[stream.Length];
+			long byteLen = stream.Length;
+			byte[] sample = new byte[byteLen];
 			stream.Read(sample, 0, sample.Length);
-			for (int i = 0; i < sample.Length; i += BytesPerSample)
+			for (int i = 0; i + BytesPerSample * stream.WaveFormat.Channels <= sample.Length; i += BytesPerSample * stream.WaveFormat.Channels)
 			{
-				List<float> channelsData = [];
+				List<float> channelsData = new List<float>();
+				int offset = i;
 				for (int c = 0; c < stream.WaveFormat.Channels; c++)
 				{
 					float value = stream.WaveFormat.Encoding switch
 					{
-						WaveFormatEncoding.IeeeFloat => BitConverter.ToSingle(sample, i),
-						WaveFormatEncoding.Pcm => BitConverter.ToInt16(sample, i) / (float)short.MaxValue,
+						WaveFormatEncoding.IeeeFloat => BitConverter.ToSingle(sample, offset),
+						WaveFormatEncoding.Pcm => BitConverter.ToInt16(sample, offset) / (float)short.MaxValue,
 						_ => throw new NotSupportedException(stream.WaveFormat.Encoding.ToString()),
 					};
 					channelsData.Add(value);
+					offset += BytesPerSample;
 				}
 				result.Add(channelsData.Average());
 			}
 			stream.Position = 0;
-			return [.. result];
+			return result.ToArray();
 		}
 
 		/// <summary>
@@ -193,7 +332,7 @@ namespace RhythmBase.Global.Utils
 		/// <returns>An array with format [Frequency] data.</returns>
 		public static float[] GetFrameFrequencyDomain(WaveFormat waveFormat, float[] samples, int maxFrequency = 2500)
 		{
-			List<float[]> finalDatas = [];
+			List<float[]> finalDatas = new List<float[]>();
 			int log = (int)Math.Ceiling(Math.Log(samples.Length, 2));
 			int newLen = (int)Math.Pow(2, log);
 			float[] filledSamples = new float[newLen];
@@ -210,7 +349,7 @@ namespace RhythmBase.Global.Utils
 				.Select(v => (float)Math.Sqrt(v.X * v.X + v.Y * v.Y))
 				.ToArray();
 
-			int count = maxFrequency / (waveFormat.SampleRate / filledSamples.Length);
+			int count = Math.Max(0, (int)(maxFrequency / (waveFormat.SampleRate / (double)filledSamples.Length)));
 			float[] finalData = dftData.Take(count).ToArray();
 			finalDatas.Add(dftData);
 
@@ -227,20 +366,18 @@ namespace RhythmBase.Global.Utils
 		/// <returns>An array with format [Channel][Frame][Frequency] data.</returns>
 		public static float[][][] GetFrequencyDomain(WaveFormat waveFormat, float[][] timeDomainData, int windowWidth, int maxFrequency = 2500)
 		{
-			List<List<float[]>> result = [];
-			int index = 0;
-			float[] buffer = new float[windowWidth];
+			List<List<float[]>> result = new List<List<float[]>>();
 			for (int i = 0; i < waveFormat.Channels; i++)
 			{
-				result.Add([]);
-				while (index + windowWidth < timeDomainData[i].Length)
+				result.Add(new List<float[]>());
+				int index = 0;
+				while (index + windowWidth <= timeDomainData[i].Length)
 				{
-					buffer = timeDomainData[i][index..(index + windowWidth - 1)];
+					float[] buffer = timeDomainData[i].Skip(index).Take(windowWidth).ToArray();
 					index += windowWidth / 2;
 					float[] outData = GetFrameFrequencyDomain(waveFormat, buffer, maxFrequency);
 					result[i].Add(outData);
 				}
-				index = 0;
 			}
 			return result.Select(i => i.ToArray()).ToArray();
 		}
@@ -254,43 +391,36 @@ namespace RhythmBase.Global.Utils
 		/// <returns>A 2D array with format [Channel][Energy] data.</returns>
 		public static float[][] ToEnergy(WaveFormat waveFormat, float[][] timeDomainData, int windowWidth)
 		{
-			List<float[]> result = [];
+			List<float[]> result = new List<float[]>();
 			for (int channel = 0; channel < waveFormat.Channels; channel++)
 			{
-				List<float> volume = [];
-				for (int j = 0; j < timeDomainData.Length - windowWidth; j += windowWidth / 2)
+				List<float> volume = new List<float>();
+				for (int j = 0; j + windowWidth <= timeDomainData[channel].Length; j += windowWidth / 2)
 				{
-					volume.Add((float)Math.Sqrt(timeDomainData[channel][j..(j + windowWidth)].Select(i => i * i).Average()));
+					volume.Add((float)Math.Sqrt(timeDomainData[channel].Skip(j).Take(windowWidth).Select(i => i * i).Average()));
 				}
-				result.Add([.. volume]);
+				result.Add(volume.ToArray());
 			}
-			return [.. result];
+			return result.ToArray();
 		}
 		public static (double bpm, double firstBeatSec) Process(string file)
 		{
 			using var ws = GetWaveStream(file);
 			float[] mono = ws.GetMonoTimeDomain();
 
-			// 1) 低频梅尔谱
 			float[,] mel = MelSpectrogram(mono, ws.WaveFormat.SampleRate);
-			//mel.OutputData2DBitmap("out1.png", SKColors.Green, SKColors.Black);
 
-			// 2) Spectral Flux
 			float[] flux = SpectralFlux(mel);
-			//flux.Output1DDataBitmap("out2.png", 2000, SKColors.Green, SKColors.Black);
 
-			// 3) 全局 BPM（自相关峰值）
-			double[] bpm = EstimateBPM(flux, 5);
-			Console.WriteLine(string.Join(",", bpm.Select(i=>$"{i:F2}")));
+			var candidates = EstimateBPMWithOffset(flux, 10);
+			if (candidates.Length == 0)
+			{
+				return (0, 0);
+			}
 
-
-			//// 4) 动态规划找首拍
-			//double[] beats = DPBeats(flux, bpm);
-			//double firstBeat = beats.Length > 0 ? beats[0] : 0;
-
-			//return (bpm, firstBeat);
-
-			return (0, 0);
+			var best = candidates.OrderByDescending(c => c.score).First();
+			Console.WriteLine(string.Join("\n", candidates.Select(c => $"BPM={c.bpm:F2}, score={c.score:F4}, firstBeatSec={c.firstBeatSec:F3}")));
+			return (best.bpm, best.firstBeatSec);
 		}
 		private static float[] MagnitudeSpectrum(float[] frame)
 		{
@@ -305,25 +435,27 @@ namespace RhythmBase.Global.Utils
 			int m = fftBins / 2;                 // 频率点数
 			float[][] bank = new float[nMels][];
 
-			// mel 刻度端点
 			float melMin = 2595 * MathF.Log10(1 + fMin / 700);
 			float melMax = 2595 * MathF.Log10(1 + fMax / 700);
 
-			// 线性插值到 nMels+2 个点
 			float[] melPoints = Enumerable.Range(0, nMels + 2)
-										  .Select(i => melMin + i * (melMax - melMin) / (nMels + 1))
-										  .ToArray();
-			float[] bin = melPoints.Select(m => ((fftBins + 1) * (700 * (MathF.Pow(10, m / 2595) - 1)) / sr))
-								 .ToArray();
+								.Select(i => melMin + i * (melMax - melMin) / (nMels + 1))
+								.ToArray();
+			float[] bin = melPoints.Select(mp => ((fftBins + 1) * (700 * (MathF.Pow(10, mp / 2595) - 1)) / sr))
+						.ToArray();
 
 			for (int i = 0; i < nMels; i++)
 			{
 				float[] filt = new float[m];
 				float left = bin[i], center = bin[i + 1], right = bin[i + 2];
 
-				for (int k = (int)float.Ceiling(left); k <= float.Floor(center); k++)
+				int start = Math.Max(0, (int)Math.Ceiling(left));
+				int cen = (int)Math.Floor(center);
+				int end = Math.Min(m - 1, (int)Math.Floor(right));
+
+				for (int k = start; k <= cen && k < m; k++)
 					filt[k] = (k - left) / (float)(center - left);
-				for (int k = (int)float.Ceiling(center); k <= float.Floor(right); k++)
+				for (int k = Math.Max(cen + 1, 0); k <= end; k++)
 					filt[k] = (right - k) / (float)(right - center);
 
 				bank[i] = filt;
@@ -340,89 +472,6 @@ namespace RhythmBase.Global.Utils
 				result += a[i] * b[i];
 			}
 			return result;
-		}
-		private static void Output1DDataBitmap(this float[] data, string fileName, int size, SKColor foreground, SKColor background) => Output1DDataBitmap(data.Select(i => (double)i).ToArray(), fileName, size, foreground, background);
-		private static void Output1DDataBitmap(this double[] data, string fileName, int size, SKColor foreground, SKColor background)
-		{
-			SKBitmap bitmap = new(data.Length, size);
-			SKCanvas canvas = new(bitmap);
-			SKPaint paint = new() { Color = foreground };
-			canvas.Clear(background);
-			double min = data.Min();
-			double max = data.Max();
-			for (int i = 0; i < data.Length; i++)
-			{
-				canvas.DrawLine(new(i, size), new(i, size - (int)(size * (data[i] - min) / (max - min))), paint);
-			}
-			bitmap.Save(fileName);
-		}
-		private static void OutputData2DBitmap(this float[,] data, string filename, SKColor foreground, SKColor background)
-		{
-			int width = data.GetLength(0);
-			int height = data.GetLength(1);
-			SKBitmap bitmap = new(width, height);
-			SKCanvas canvas = new(bitmap);
-			canvas.Clear(background);
-			float min = data.Cast<float>().Min();
-			float max = data.Cast<float>().Max();
-			for (int x = 0; x < width; x++)
-			{
-				for (int y = 0; y < height; y++)
-				{
-					double value = data[x, y];
-					canvas.DrawPoint(new(x, y), background.Mix(foreground, (float)((value - min) / (max - min))));
-				}
-			}
-			bitmap.Save(filename);
-		}
-		private static void OutputData2DBitmap(this double[,] data, string filename, SKColor foreground, SKColor background)
-		{
-			int width = data.GetLength(0);
-			int height = data.GetLength(1);
-			SKBitmap bitmap = new(width, height);
-			SKCanvas canvas = new(bitmap);
-			canvas.Clear(background);
-			double min = data.Cast<double>().Min();
-			double max = data.Cast<double>().Max();
-			for (int x = 0; x < width; x++)
-			{
-				for (int y = 0; y < height; y++)
-				{
-					double value = data[x, y];
-					if (value > 0)
-						canvas.DrawPoint(new(x, y), foreground.WithAlpha((byte)((value - min) / (max - min))));
-				}
-			}
-			bitmap.Save(filename);
-		}
-		private static void OutputData2DBitmap(this float[][] data, string filename, SKColor foreground, SKColor background) => data.Select(i => i.Select(j => (double)j).ToArray()).ToArray().OutputData2DBitmap(filename, foreground, background);
-		private static void OutputData2DBitmap(this double[][] data, string filename, SKColor foreground, SKColor background)
-		{
-			int width = data.Length;
-			int height = data.Max(i => i.Length);
-			SKBitmap bitmap = new(width, height);
-			SKCanvas canvas = new(bitmap);
-			SKPaint paint = new() { Color = foreground };
-			canvas.Clear(background);
-			double min = data.Min(i => i.Min());
-			double max = data.Max(i => i.Max());
-			for (int x = 0; x < width; x++)
-			{
-				for (int y = 0; y < height; y++)
-				{
-					double value = data[x][y];
-					canvas.DrawPoint(new(x, y), background.Mix(foreground, (float)((value - min) / (max - min))));
-				}
-			}
-			bitmap.Save(filename);
-		}
-		private static SKColor Mix(this SKColor e, SKColor f, float rate)
-		{
-			float r = e.Red * (1 - rate) + f.Red * rate;
-			float g = e.Green * (1 - rate) + f.Green * rate;
-			float b = e.Blue * (1 - rate) + f.Blue * rate;
-			float a = e.Alpha * (1 - rate) + f.Alpha * rate;
-			return new SKColor((byte)r, (byte)g, (byte)b, (byte)a);
 		}
 	}
 }
