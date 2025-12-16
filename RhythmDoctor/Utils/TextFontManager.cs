@@ -22,18 +22,20 @@ namespace RhythmBase.RhythmDoctor.Utils
 		private bool isBuilt { get; set; } = false;
 		private SpriteSheetBook? builtBook = null;
 		private DecorationPool<string>[]? pools;
-		public void AddWord(string word)
+		public TextFontManager AddWord(string word)
 		{
 			if (infos.TryGetValue(word, out _))
-				return;
+				return this;
 			var rect = spriteSheetCanvas.DrawText(word, font, out var pos, out var width);
 			TextInfo newInfo = new(word, pos.ToRDPoint(), rect.ToRDRect(), width, default);
 			infos[word] = newInfo;
+			return this;
 		}
-		public void AddWords(IEnumerable<string> words)
+		public TextFontManager AddWords(IEnumerable<string> words)
 		{
 			foreach (var word in words)
 				AddWord(word);
+			return this;
 		}
 		public TextFontManager(SKFont font, string filename, SpriteSheetCanvasSettings settings)
 		{

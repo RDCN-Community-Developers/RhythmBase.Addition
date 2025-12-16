@@ -2,7 +2,6 @@
 using RhythmBase.Global.Events;
 using RhythmBase.RhythmDoctor.Components;
 using RhythmBase.RhythmDoctor.Events;
-using System.Numerics;
 
 namespace RhythmBase.RhythmDoctor.Utils
 {
@@ -50,22 +49,22 @@ namespace RhythmBase.RhythmDoctor.Utils
 			this.level = level;
 			this.Random = random;
 			particles = [.. Enumerable.Range(startDepth, count).Select(i => {
-			var p = new Particle()
-			{
-				Deco = new Decoration()
-				{
-					Depth = i,
-					Room = room,
-					Visible = false,
-				},
-				Position = new RDPointN3(
-					random.NextSingle(),
-					random.NextSingle(),
-					(i - startDepth) / (float)count)
-			};
-				level.Decorations.Add(p.Deco);
-			return  p;
-			})];
+						var p = new Particle()
+						{
+								Deco = new Decoration()
+								{
+										Depth = i,
+										Room = room,
+										Visible = false,
+								},
+								Position = new RDPointN3(
+										random.NextSingle(),
+										random.NextSingle(),
+										(i - startDepth) / (float)count)
+						};
+								level.Decorations.Add(p.Deco);
+						return  p;
+						})];
 		}
 
 		/// <summary>
@@ -76,7 +75,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 		/// <param name="startDepth">The starting depth for the particles.</param>
 		/// <param name="count">The number of particles to generate.</param>
 		public ParticleGenerator(RDLevel level, RDSingleRoom room, int startDepth, int count)
-			: this(level, room, startDepth, count, Random.Shared) { }
+				: this(level, room, startDepth, count, Random.Shared) { }
 
 		/// <summary>
 		/// Randomizes the positions of all particles.
@@ -86,9 +85,9 @@ namespace RhythmBase.RhythmDoctor.Utils
 			for (int i = 0; i < particles.Count; i++)
 			{
 				particles[i].Position = new RDPointN3(
-					Random.NextSingle(),
-					Random.NextSingle(),
-					i / (float)particles.Count);
+						Random.NextSingle(),
+						Random.NextSingle(),
+						i / (float)particles.Count);
 			}
 		}
 

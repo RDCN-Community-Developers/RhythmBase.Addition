@@ -1,4 +1,6 @@
-﻿using RhythmBase.Global.Extensions;
+﻿using RhythmBase.Global.Components;
+using RhythmBase.Global.Components.Vector;
+using RhythmBase.Global.Extensions;
 using RhythmBase.RhythmDoctor.Assets.FlexibleSprite;
 using SkiaSharp;
 
@@ -10,10 +12,10 @@ namespace RhythmBase.RhythmDoctor.Assets
 		public int MaxWidth { get; set; } = 1024;
 		public int MaxHeight { get; set; } = 1024;
 		public float GlowSigma { get; set; } = 5;
-		public SKColor GlowColor { get; set; } = SKColors.White;
+		public RDColor GlowColor { get; set; } = RDColor.White;
 		public float StrokeWidth { get; set; } = 1;
-		public SKColor StrokeColor { get; set; } = SKColors.White;
-		public SKRectI Margin { get; set; } = new();
+		public RDColor StrokeColor { get; set; } = RDColor.White;
+		public RDRectNI Margin { get; set; } = new();
 		public SKPaint DefaultEffect { get; set; } = new()
 		{
 			Color = SKColors.Black,
@@ -34,14 +36,14 @@ namespace RhythmBase.RhythmDoctor.Assets
 		private SKRectI currentMaxRect = new();
 		private readonly SpriteSheetBook book = new();
 		public float DefaultGlowSigma { get; set; } = 5;
-		public SKColor DefaultGlowColor { get; set; } = SKColors.White;
+		public RDColor DefaultGlowColor { get; set; } = RDColor.White;
 		public float DefaultStrokeWidth { get; set; } = 1;
-		public SKColor DefaultOutlineColor { get; set; } = SKColors.White;
+		public RDColor DefaultOutlineColor { get; set; } = RDColor.White;
 		public SKPaint DefaultEffect { get; set; } = new()
 		{
 			Color = SKColors.Black,
 		};
-		public SKRectI Margin { get; set; } = new();
+		public RDRectNI Margin { get; set; } = new();
 		public int CurrentPage => curPage;
 		public SpriteSheetCanvas(OutputDirection direction, SKSizeI maxSize) : this(direction, maxSize.Width, maxSize.Height) { }
 		public SpriteSheetCanvas(OutputDirection direction) : this(direction, int.MaxValue, int.MaxValue) { }
@@ -101,14 +103,14 @@ namespace RhythmBase.RhythmDoctor.Assets
 			using (SKCanvas _glowCanvas = new(_glow))
 			{
 				using SKPaint _glowPaint = DefaultEffect?.Clone() ?? new SKPaint();
-				_glowPaint.Color = DefaultGlowColor;
+				_glowPaint.Color = DefaultGlowColor.ToSKColor();
 				_glowPaint.MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Outer, DefaultGlowSigma);
 				_glowCanvas.DrawText(text, off, font, _glowPaint);
 			}
 			using (SKCanvas _outlineCanvas = new(_outline))
 			{
 				using SKPaint _outlinePaint = DefaultEffect?.Clone() ?? new SKPaint();
-				_outlinePaint.Color = DefaultOutlineColor;
+				_outlinePaint.Color = DefaultOutlineColor.ToSKColor();
 				_outlinePaint.Style = SKPaintStyle.Stroke;
 				_outlinePaint.StrokeWidth = DefaultStrokeWidth;
 				_outlineCanvas.DrawText(text, off, font, _outlinePaint);
@@ -144,7 +146,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 				minCardGrid = new(0, 0);
 				return true;
 			}
-			GridCoordinate maxStruct = RowColumnSize(AddMargin(maxTextSize, Margin));
+			GridCoordinate maxStruct = RowColumnSize(AddMargin(maxTextSize, Margin.ToSKRect()));
 			bool can = frameToDraw.Count + (more ? 1 : 0) <= maxStruct.Count;
 			switch (direction)
 			{
@@ -184,9 +186,9 @@ namespace RhythmBase.RhythmDoctor.Assets
 			if (imageStruct.Count == 0)
 				throw new NotSupportedException($"Image size too big, at \"{frameToDraw[0]}\".");
 			using SKPaint paintGlow = DefaultEffect?.Clone() ?? new();
-			paintGlow.Color = DefaultGlowColor;
+			paintGlow.Color = DefaultGlowColor.ToSKColor();
 			paintGlow.ImageFilter = SKImageFilter.CreateDropShadowOnly(
-					0, 0, DefaultGlowSigma, DefaultGlowSigma, DefaultGlowColor
+					0, 0, DefaultGlowSigma, DefaultGlowSigma, DefaultGlowColor.ToSKColor()
 				);
 			using SKPaint paintOutline = DefaultEffect?.Clone() ?? new();
 			paintOutline.ImageFilter = SKImageFilter.CreateCompose(
@@ -207,7 +209,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 							0, 0, 0, 1, 255
 						]
 						)));
-			SKSizeI cardSize = AddMargin(contentSize.Size, Margin);
+			SKSizeI cardSize = AddMargin(contentSize.Size, Margin.ToSKRect());
 			SKBitmap bitmap = new(imageStruct.ColumnCount * cardSize.Width, imageStruct.RowCount * cardSize.Height);
 			SKBitmap bitmapGlow = new(imageStruct.ColumnCount * cardSize.Width, imageStruct.RowCount * cardSize.Height);
 			SKBitmap bitmapOutline = new(imageStruct.ColumnCount * cardSize.Width, imageStruct.RowCount * cardSize.Height);
@@ -279,7 +281,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 					ImageOutline = page.imageOutline,
 					Size = page.cardSize.ToRDSize(),
 				};
-				PageIndex[] frames = book.CardIndice.Where(j => j.Page == book.PageInfos.IndexOf(page)).ToArray();
+				PageIndex[] frames = [.. book.CardIndice.Where(j => j.Page == book.PageInfos.IndexOf(page))];
 				for (int i = 0; i < frames.Length; i++)
 				{
 					PageIndex frame = frames[i];

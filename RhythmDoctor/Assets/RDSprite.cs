@@ -245,9 +245,9 @@ namespace RhythmBase.RhythmDoctor.Assets
 		private static readonly string[] characterExpressionNames =
 				[
 						"neutral",
-								"happy",
-								"barely",
-								"missed"
+						"happy",
+						"barely",
+						"missed"
 				];
 		/// <summary>
 		/// An expression.
