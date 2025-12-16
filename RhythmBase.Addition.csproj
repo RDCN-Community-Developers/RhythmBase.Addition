@@ -9,6 +9,7 @@
 	<Title>RhythmBase.Addition</Title>
 	<Version>1.2.0-rc7</Version>
 	<Authors>obugs</Authors>
+		<LangVersion>preview</LangVersion>
 	<Company />
 	<Description>Added some tools into RhythmBase.</Description>
 	<PackageTags>Rhythm Doctor</PackageTags>
