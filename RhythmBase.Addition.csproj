@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <PackageReference Include="Brc" Version="1.0.0" />
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="NAudio.Vorbis" Version="1.5.0" />
     <PackageReference Include="PrimitiveSharp.Core" Version="1.0.3" />

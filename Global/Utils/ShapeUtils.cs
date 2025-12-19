@@ -8,7 +8,7 @@ namespace RhythmBase.Global.Utils
 		public static RDPointN[][] Earcut(RDPointN[] points, int[] holeIndices)
 		{
 			double[] points2 = [.. points.SelectMany(p => new double[] { p.X, p.Y })];
-			int[] tessellation = [.. EarcutNet.Earcut.Tessellate(points2, holeIndices)];
+			int[] tessellation = [.. Utils.Earcut.Tessellate(points2, holeIndices)];
 			RDPointN[][] result = new RDPointN[tessellation.Length / 3][];
 			for (int i = 0; i < tessellation.Length; i += 3)
 			{

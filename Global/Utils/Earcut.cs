@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace EarcutNet
+namespace RhythmBase.Global.Utils
 {
     public class Earcut
     {

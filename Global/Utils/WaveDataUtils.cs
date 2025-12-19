@@ -425,9 +425,9 @@ namespace RhythmBase.Global.Utils
 		private static float[] MagnitudeSpectrum(float[] frame)
 		{
 			int n = fft;
-			Complex[] c = frame.Select(v => new Complex { X = v }).ToArray();
+			Complex[] c = [.. frame.Select(v => new Complex { X = v })];
 			FastFourierTransform.FFT(true, (int)Math.Log(n, 2), c);
-			return c.Take(n / 2).Select(x => (float)Math.Sqrt(x.X * x.X + x.Y * x.Y)).ToArray();
+			return [.. c.Take(n / 2).Select(x => (float)Math.Sqrt(x.X * x.X + x.Y * x.Y))];
 		}
 		private static float[][] MelFilterBank(int sr, int fftBins, int nMels, float fMin, float fMax)
 		{

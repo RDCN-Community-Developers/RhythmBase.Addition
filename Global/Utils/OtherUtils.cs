@@ -11,8 +11,8 @@ namespace RhythmBase.Global.Utils
     internal static class OtherUtils
     {
 
-		private static void OutputData1DBitmap(this float[] data, string fileName, int size, SKColor foreground, SKColor background) => OutputData1DBitmap(data.Select(i => (double)i).ToArray(), fileName, size, foreground, background);
-		private static void OutputData1DBitmap(this double[] data, string fileName, int size, SKColor foreground, SKColor background)
+		internal static void OutputData1DBitmap(this float[] data, string fileName, int size, SKColor foreground, SKColor background) => OutputData1DBitmap(data.Select(i => (double)i).ToArray(), fileName, size, foreground, background);
+		internal static void OutputData1DBitmap(this double[] data, string fileName, int size, SKColor foreground, SKColor background)
 		{
 			SKBitmap bitmap = new(data.Length, size);
 			SKCanvas canvas = new(bitmap);
@@ -26,7 +26,7 @@ namespace RhythmBase.Global.Utils
 			}
 			bitmap.Save(fileName);
 		}
-		private static void OutputData2DBitmap(this float[,] data, string filename, SKColor foreground, SKColor background)
+		internal static void OutputData2DBitmap(this float[,] data, string filename, SKColor foreground, SKColor background)
 		{
 			int width = data.GetLength(0);
 			int height = data.GetLength(1);
@@ -45,7 +45,7 @@ namespace RhythmBase.Global.Utils
 			}
 			bitmap.Save(filename);
 		}
-		private static void OutputData2DBitmap(this double[,] data, string filename, SKColor foreground, SKColor background)
+		internal static void OutputData2DBitmap(this double[,] data, string filename, SKColor foreground, SKColor background)
 		{
 			int width = data.GetLength(0);
 			int height = data.GetLength(1);
@@ -65,8 +65,8 @@ namespace RhythmBase.Global.Utils
 			}
 			bitmap.Save(filename);
 		}
-		private static void OutputData2DBitmap(this float[][] data, string filename, SKColor foreground, SKColor background) => data.Select(i => i.Select(j => (double)j).ToArray()).ToArray().OutputData2DBitmap(filename, foreground, background);
-		private static void OutputData2DBitmap(this double[][] data, string filename, SKColor foreground, SKColor background)
+		internal static void OutputData2DBitmap(this float[][] data, string filename, SKColor foreground, SKColor background) => data.Select(i => i.Select(j => (double)j).ToArray()).ToArray().OutputData2DBitmap(filename, foreground, background);
+		internal static void OutputData2DBitmap(this double[][] data, string filename, SKColor foreground, SKColor background)
 		{
 			int width = data.Length;
 			int height = data.Max(i => i.Length);
