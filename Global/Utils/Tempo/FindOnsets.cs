@@ -599,7 +599,7 @@ internal class AOnset
 		onset[0] = isonset;
 		total_frames += hop_size;
 	}
-	public int GetLastOnsetSample() => last_onset - delay;
+	public int LastOnsetSample => last_onset - delay;
 }
 internal static class FindOnsets
 {
@@ -631,7 +631,7 @@ internal static class FindOnsets
 					onset.Do(samplevec, beatvec);
 					if (beatvec[0] > 0f)
 					{
-						int pos = onset.GetLastOnsetSample() + paddedBegin;
+						int pos = onset.LastOnsetSample + paddedBegin;
 						if (pos >= beginPos && pos < endPos)
 							concurrentOnsets.Add(new(pos, 1.0));
 					}
@@ -650,7 +650,7 @@ internal static class FindOnsets
 				onset.Do(samplevec, beatvec);
 				if (beatvec[0] > 0f)
 				{
-					int pos = onset.GetLastOnsetSample();
+					int pos = onset.LastOnsetSample;
 					if (pos >= 0) result.Add(new(pos, 1.0));
 				}
 			}

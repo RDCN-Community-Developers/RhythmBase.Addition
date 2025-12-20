@@ -1,4 +1,6 @@
-﻿namespace RhythmBase.Global.Utils.Tempo;
+﻿using System.Threading.Tasks;
+
+namespace RhythmBase.Global.Utils.Tempo;
 
 public enum ProcessingState
 {
@@ -7,7 +9,8 @@ public enum ProcessingState
 	RefiningIntervals = 2,
 	SelectingBpmValues = 3,
 	CalculatingOffsets = 4,
-	Done = 5
+	MatchingOnsets = 5,
+	Done = int.MaxValue,
 }
 public record struct TempoResult(double Bpm, double Offset, double Fitness);
 internal record struct Onset(int Pos, double Strength);
@@ -64,7 +67,7 @@ internal record struct IntervalTester : IDisposable
 internal class SerializedTempo(int numFrames)
 {
 	internal readonly float[] samples = new float[numFrames];
-	internal int samplerate;
+	internal required int samplerate;
 	internal int numThreads;
 	internal byte? terminate;
 	internal ProcessingState Progress
@@ -79,9 +82,10 @@ internal class SerializedTempo(int numFrames)
 		}
 	}
 	internal readonly List<TempoResult> result = [];
+	internal bool[][] MatchedTempos = [];
 	internal event Action<ProcessingState>? ProgressChanged;
 };
-public static class FindTempo
+internal static class FindTempo
 {
 	const int SimMaxColumns = 32;
 	const int SimMaxPlayers = 16;
@@ -91,7 +95,6 @@ public static class FindTempo
 	internal const double MaxBpm = 205.0;
 	private const int IntervalDelta = 10;
 	private const int IntervalDownsample = 3;
-	private const int MaxThreads = 1;
 
 	internal static void CreateHammingWindow(double[] buffer)
 	{
@@ -223,7 +226,7 @@ public static class FindTempo
 		if (numThreads > 1)
 		{
 			Parallel.For(0, numCoarseIntervals,
-				new ParallelOptions() { MaxDegreeOfParallelism = 1}, (i) =>
+				new ParallelOptions() { MaxDegreeOfParallelism = 1 }, (i) =>
 				{
 					int threadId = Environment.CurrentManagedThreadId % numThreads;
 					int index = i * IntervalDelta;
@@ -337,7 +340,7 @@ public static class FindTempo
 		for (int i = 0; i < degree; ++i)
 			outCoefs[i] = coeff[0, i];
 	}
-	private static void CalculateBPM(ref SerializedTempo data, Onset[] onsets)
+	internal static void CalculateBPM(ref SerializedTempo data, Onset[] onsets)
 	{
 		var tempo = data.result;
 
@@ -487,7 +490,7 @@ public static class FindTempo
 
 		return sumA >= sumB ? offset : offbeat;
 	}
-	private static void CalculateOffset(ref SerializedTempo data, Onset[] onsets)
+	internal static void CalculateOffset(ref SerializedTempo data, Onset[] onsets)
 	{
 		var tempo = data.result;
 		int samplerate = data.samplerate;
@@ -511,77 +514,207 @@ public static class FindTempo
 			tempo[i] = t;
 		}
 	}
-	public class TempoDetector : IDisposable
+	internal static void CalculateOnsets(ref SerializedTempo data, Onset[] onsets)
 	{
-		private readonly SerializedTempo data;
-		public event Action<ProcessingState>? ProgressChanged;
-		public List<TempoResult> Results => data.result;
-		public SpecdescMethod Method { get; set; } = SpecdescMethod.HighFrequencyContent;
-		public int ThreadCount
+		bool[][] fits = new bool[onsets.Length][];
+		for (int j = 0; j < onsets.Length; j++)
 		{
-			get => data.numThreads;
-			set => data.numThreads = Math.Min(value, MaxThreads);
-		}
-		public TempoDetector(int firstFrame, int numFrames, int samplerate, float[][] samples)
-		{
-			data = new SerializedTempo(numFrames)
+			bool[] matchedtempos = new bool[data.result.Count];
+			for (int i = 0; i < data.result.Count; i++)
 			{
-				numThreads = Math.Min(Environment.ProcessorCount, MaxThreads),
-				samplerate = samplerate
-			};
-			data.ProgressChanged += (state) => { ProgressChanged?.Invoke(state); };
-
-			for (int i = 0; i < numFrames; ++i)
-			{
-				data.samples[i] = (samples[0][firstFrame + i] + samples[1][firstFrame + i]);
+				Onset onset = onsets[j];
+				TempoResult result = data.result[i];
+				int pos = onset.Pos;
+				var diff = (pos - (result.Offset * data.samplerate)) % (30.0 * data.samplerate / result.Bpm);
+				matchedtempos[i] = (double.Abs(diff) < 100);
 			}
+			fits[j] = matchedtempos;
 		}
-		public TempoDetector(int samplerate, float[] samples)
-		{
-			data = new SerializedTempo(samples.Length)
-			{
-				numThreads = Math.Min(Environment.ProcessorCount, MaxThreads),
-				samplerate = samplerate
-			};
-			data.ProgressChanged += (state) => { ProgressChanged?.Invoke(state); };
+		data.MatchedTempos = fits;
+		fits = fits.Where(i=>i.Any(b=>b)).ToArray();
 
-			Array.Copy(samples, data.samples, samples.Length);
+		for(int i=0;i<data.result.Count;i++)
+		{
+			Console.WriteLine($"{data.result[i].Bpm,6:F2} | {string.Join("", fits.Select(j => j[i] ? "+":" "))}");
 		}
-		public void Execute()
+		//Console.WriteLine($" -Onsets-  [{string.Join("|", data.result.Select(i=>i.Bpm.ToString("F2").PadLeft(6)))}]");
+		//for (int i = 0; i < fits.Length; i++)
+		//{
+		//	bool[] onset = fits[i];
+		//	Console.WriteLine($"({onsets[i].Pos / (double)data.samplerate,8:F2}s)[{string.Join("|", onset.Select(i => i ? "  +   " : "  .   "))}]");
+		//}
+	}
+}
+public class TempoDetector : IDisposable
+{
+	private readonly SerializedTempo data;
+	private const double MinUniformSegmentSeconds = 6.0;
+	private const double VariableTempoToleranceBpm = 1;
+	public event Action<ProcessingState>? ProgressChanged;
+	private const int MaxThreads = 1;
+	public List<TempoResult> Results => data.result;
+	public SpecdescMethod Method { get; set; } = SpecdescMethod.HighFrequencyContent;
+	public int ThreadCount
+	{
+		get => data.numThreads;
+		set => data.numThreads = Math.Min(value, MaxThreads);
+	}
+	public TempoDetector(int firstFrame, int numFrames, int samplerate, float[][] samples)
+	{
+		data = new SerializedTempo(numFrames)
 		{
-			SerializedTempo data = this.data;
-			data.Progress = ProcessingState.LookingForOnsets;
+			numThreads = Math.Min(Environment.ProcessorCount, MaxThreads),
+			samplerate = samplerate
+		};
+		data.ProgressChanged += (state) => { ProgressChanged?.Invoke(state); };
 
-			List<Onset> onsets = [];
-			FindOnsets.method = Method;
-			FindOnsets.Run(data.samples, data.samplerate, 1, onsets);
-			if (data.terminate is not null) { return; }
-			data.Progress = ProcessingState.ScanningIntervals;
+		for (int i = 0; i < numFrames; ++i)
+		{
+			data.samples[i] = (samples[0][firstFrame + i] + samples[1][firstFrame + i]);
+		}
+	}
+	public TempoDetector(int firstFrame, int numFrames, int samplerate, float[] samples)
+	{
+		data = new SerializedTempo(numFrames)
+		{
+			numThreads = Math.Min(Environment.ProcessorCount, MaxThreads),
+			samplerate = samplerate
+		};
+		data.ProgressChanged += (state) => { ProgressChanged?.Invoke(state); };
 
-			for (int i = 0; i < int.Min(onsets.Count, 100); ++i)
+		Array.Copy(samples, firstFrame, data.samples, 0, numFrames);
+	}
+	public TempoDetector(int samplerate, float[][] samples)
+	{
+		data = new SerializedTempo(samples[0].Length)
+		{
+			numThreads = Math.Min(Environment.ProcessorCount, MaxThreads),
+			samplerate = samplerate
+		};
+		data.ProgressChanged += (state) => { ProgressChanged?.Invoke(state); };
+
+		for (int i = 0; i < samples.Length; ++i)
+		{
+			data.samples[i] = (samples[0][i] + samples[1][i]);
+		}
+	}
+	public TempoDetector(int samplerate, float[] samples)
+	{
+		data = new SerializedTempo(samples.Length)
+		{
+			numThreads = Math.Min(Environment.ProcessorCount, MaxThreads),
+			samplerate = samplerate
+		};
+		data.ProgressChanged += (state) => { ProgressChanged?.Invoke(state); };
+
+		Array.Copy(samples, data.samples, samples.Length);
+	}
+	public void Execute()
+	{
+		SerializedTempo data = this.data;
+		Execute(ref data);
+	}
+	private void Execute(ref SerializedTempo data)
+	{
+		data.Progress = ProcessingState.LookingForOnsets;
+
+		List<Onset> onsets = [];
+		FindOnsets.method = Method;
+		FindOnsets.Run(data.samples, data.samplerate, 1, onsets);
+		Onset[] onsetsarray = onsets.ToArray();
+		if (data.terminate is not null) { return; }
+		data.Progress = ProcessingState.ScanningIntervals;
+
+		for (int i = 0; i < onsetsarray.Length; ++i)
+		{
+			int a = int.Max(0, onsetsarray[i].Pos - 100);
+			int b = int.Min(data.samples.Length, onsetsarray[i].Pos + 100);
+			float v = 0.0f;
+			for (int j = a; j < b; ++j)
 			{
-				int a = int.Max(0, onsets[i].Pos - 100);
-				int b = int.Min(data.samples.Length, onsets[i].Pos + 100);
-				float v = 0.0f;
-				for (int j = a; j < b; ++j)
-				{
-					v += float.Abs(data.samples[j]);
-				}
-				v /= float.Max(1, b - a);
-				onsets[i] = onsets[i] with { Strength = v };
+				v += float.Abs(data.samples[j]);
 			}
-
-			CalculateBPM(ref data, [.. onsets]);
-			if (data.terminate is not null) { return; }
-			data.Progress = ProcessingState.CalculatingOffsets;
-
-			CalculateOffset(ref data, [.. onsets]);
-			if (data.terminate is not null) { return; }
-			data.Progress = ProcessingState.Done;
+			v /= float.Max(1, b - a);
+			onsetsarray[i] = onsetsarray[i] with { Strength = v };
 		}
-		public void Dispose()
+
+		FindTempo.CalculateBPM(ref data, onsetsarray);
+		if (data.terminate is not null) { return; }
+		data.Progress = ProcessingState.CalculatingOffsets;
+
+		FindTempo.CalculateOffset(ref data, onsetsarray);
+		if (data.terminate is not null) { return; }
+		data.Progress = ProcessingState.MatchingOnsets;
+
+		FindTempo.CalculateOnsets(ref data, onsetsarray);
+		if (data.terminate is not null) { return; }
+		data.Progress = ProcessingState.Done;
+	}
+	public (double Seconds, TempoResult Result)[] ExecuteNonuniformSpeed()
+	{
+		var s = ExecuteNonuniformSpeedInternal(data, 0).OrderBy(i => i.Seconds).ToArray();
+		return s;
+	}
+	//private (double Seconds, TempoResult Result, string depth)[] ExecuteNonuniformSpeedInternal(SerializedTempo data, string depth)
+	//{
+	//	int splitedLength = data.samples.Length / 2;
+	//	SerializedTempo datar = new(data.samples.Length - splitedLength)
+	//	{
+	//		samplerate = data.samplerate,
+	//		numThreads = data.numThreads
+	//	};
+	//	Array.Copy(data.samples, splitedLength, datar.samples, 0, datar.samples.Length);
+	//	Execute(ref datar);
+	//	if (double.Abs(datar.result[0].Bpm - data.result[0].Bpm) < VariableTempoToleranceBpm)
+	//		return [(0, datar.result[0], depth + "-")];
+
+	//	SerializedTempo datal = new(splitedLength)
+	//	{
+	//		samplerate = data.samplerate,
+	//		numThreads = data.numThreads
+	//	};
+	//	Array.Copy(data.samples, 0, datal.samples, 0, datal.samples.Length);
+
+	//	double middleSeconds = datal.samples.Length / (double)data.samplerate;
+	//	var resultr = ExecuteNonuniformSpeedInternal(datar, depth + "R");
+	//	Execute(ref datal);
+	//	var resultl = ExecuteNonuniformSpeedInternal(datal, depth + "L");
+	//	return [.. resultl, .. resultr.Select(i => (i.Seconds + middleSeconds, i.Result, depth))];
+	//}
+	private (double Seconds, TempoResult Result)[] ExecuteNonuniformSpeedInternal(SerializedTempo data, int depthlimit)
+	{
+		double diff;
+		int depth = 0;
+		int sampleLength = data.samples.Length;
+		SerializedTempo datap = data, datasl, datasr;
+		do
 		{
-			GC.SuppressFinalize(this);
+			depth++;
+			sampleLength = sampleLength / (1 << depth);
+			datasl = new(sampleLength)
+			{
+				numThreads = data.numThreads,
+				samplerate = data.samplerate
+			};
+			datasr = new(datap.samples.Length - sampleLength)
+			{
+				numThreads = data.numThreads,
+				samplerate = data.samplerate
+			};
+			Array.Copy(datap.samples, 0, datasl.samples, 0, datasl.samples.Length);
+			Array.Copy(datap.samples, sampleLength, datasr.samples, 0, datasr.samples.Length);
+			Execute(ref datasl);
+			Execute(ref datasr);
+
+			diff = double.Abs(datap.result[0].Bpm - datasl.result[0].Bpm) + double.Abs(datasl.result[0].Bpm - datasr.result[0].Bpm);
+			datap = datasl;
 		}
+		while (diff > VariableTempoToleranceBpm);
+
+		throw new NotImplementedException();
+	}
+	public void Dispose()
+	{
+		GC.SuppressFinalize(this);
 	}
 }
