@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using RhythmBase.Global.Components.Vector;
+﻿using RhythmBase.Global.Components.Vector;
 using RhythmBase.Global.Events;
 using RhythmBase.RhythmDoctor.Utils;
 using System.Numerics;

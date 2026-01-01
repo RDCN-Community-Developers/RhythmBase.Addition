@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using RhythmBase.Global.Assets;
+﻿using RhythmBase.Global.Assets;
 using RhythmBase.Global.Components;
 using RhythmBase.Global.Components.Vector;
 using RhythmBase.Global.Extensions;
@@ -18,42 +16,34 @@ namespace RhythmBase.RhythmDoctor.Assets
 	{
 		public string DisplayName => Path.GetFileName(FilePath);
 		/// <inheritdoc/>
-		[JsonIgnore]
 		public string FilePath { get; init; } = string.Empty;
 		/// <summary>
 		/// The expression names of the sprite file.
 		/// </summary>
-		[JsonIgnore]
 		public IEnumerable<string> Expressions => Clips.Select((i) => i.Name);
 		/// <summary>
 		/// The area where the sprite is previewed.
 		/// </summary>
-		[JsonIgnore]
 		public SKRect? Preview => new SKRect?(RowPreviewFrame == null ? default(SKRect) : GetFrameRect(checked((int)RowPreviewFrame.Value)));
 		/// <summary>
 		/// The size of the sprite/image
 		/// </summary>
-		[JsonIgnore]
-		public RDSizeNI ImageSize => new(ImageBase.Width, ImageBase.Height);
+		public RDSizeNI ImageSize => ImageBase is null ? default : new(ImageBase.Width, ImageBase.Height);
 		/// <summary>
 		/// Base layer
 		/// </summary>
-		[JsonIgnore]
 		public SKBitmap? ImageBase { get; set; }
 		/// <summary>
 		/// Glow layer
 		/// </summary>
-		[JsonIgnore]
 		public SKBitmap? ImageGlow { get; set; }
 		/// <summary>
 		/// Outline layer
 		/// </summary>
-		[JsonIgnore]
 		public SKBitmap? ImageOutline { get; set; }
 		/// <summary>
 		/// Freeze layer
 		/// </summary>
-		[JsonIgnore]
 		public SKBitmap? ImageFreeze { get; set; }
 		/// <summary>
 		/// The name of the sprite.
@@ -269,7 +259,6 @@ namespace RhythmBase.RhythmDoctor.Assets
 			/// <summary>
 			/// The way the expression loops.
 			/// </summary>
-			[JsonConverter(typeof(StringEnumConverter))]
 			public LoopOption Loop { get; set; }
 			/// <summary>
 			/// The frame rate of the emoticon when <c>loop == yes</c>.

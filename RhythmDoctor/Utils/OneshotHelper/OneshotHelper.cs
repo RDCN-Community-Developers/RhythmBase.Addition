@@ -5,7 +5,7 @@ namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
 {
 	public class NurseSayConfig
 	{
-		public SayReadyGetSetGoVoiceSources VoiceSource { get; set; } = SayReadyGetSetGoVoiceSources.Nurse;
+		public SayReadyGetSetGoVoiceSource VoiceSource { get; set; } = SayReadyGetSetGoVoiceSource.Nurse;
 	}
 	public record struct OneshotPulseHit()
 	{

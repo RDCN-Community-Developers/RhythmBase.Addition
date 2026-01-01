@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using RhythmBase.Global.Components.Easing;
+﻿using RhythmBase.Global.Components.Easing;
 using RhythmBase.RhythmDoctor.Components;
 
 namespace RhythmBase.RhythmDoctor.Utils
@@ -22,7 +21,6 @@ namespace RhythmBase.RhythmDoctor.Utils
 		public ThresholdType EndThresholdType { get; set; } = ThresholdType.InOut;
 		public readonly RDBeat RandomizedTime(RDBeat time) => time + _rTimeOff;
 		public readonly float RandomizedDuration() => Duration + _rDurOff - _rTimeOff;
-		[JsonIgnore]
 		public Random Random { get; set; } = Random.Shared;
 		public RDAnimation Randomized()
 		{
