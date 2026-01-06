@@ -29,9 +29,7 @@ namespace RhythmBase.Global.Extensions
 			for (int i = 0; i < word.Length; i++)
 			{
 				if (word[i] == UppercasePrefixChar && i + 1 < word.Length && char.IsUpper(word[i + 1]))
-				{
 					continue;
-				}
 				sb.Append(word[i]);
 			}
 			return sb.ToString();

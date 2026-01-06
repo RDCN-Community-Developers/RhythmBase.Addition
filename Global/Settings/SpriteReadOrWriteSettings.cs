@@ -32,5 +32,7 @@
 		/// Defaults to <see langword="false" />.
 		/// </summary>
 		public bool WithImage { get; set; }
+
+		public bool UppercasePrefixCharInExpressionNames { get; set; } = false;
 	}
 }

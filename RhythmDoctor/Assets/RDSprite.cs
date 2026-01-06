@@ -140,7 +140,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// <param name="setting">Write settings.</param>
 		public void WriteJson(Stream stream, SpriteReadOrWriteSettings? setting = null)
 		{
-			SpriteConverter converter = new();
+			SpriteConverter converter = new() { Settings = setting ?? new(), };
 			using var writer = new Utf8JsonWriter(stream, new()
 			{
 				SkipValidation = true,
@@ -244,21 +244,10 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// </summary>
 		public class Expression
 		{
-			internal string _name;
 			/// <summary>
 			/// Expression name.
 			/// </summary>
-			public required string Name
-			{
-				get
-				{
-					return _name.WithoutUppercasePrefix();
-				}
-				set
-				{
-					_name = value.WithUppercasePrefix();
-				}
-			}
+			public required string Name { get; set; }
 			/// <summary>
 			/// The list of frame indexes for expression.
 			/// </summary>

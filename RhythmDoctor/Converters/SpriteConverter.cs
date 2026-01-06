@@ -1,4 +1,6 @@
 ﻿using RhythmBase.Global.Components.Vector;
+using RhythmBase.Global.Extensions;
+using RhythmBase.Global.Settings;
 using RhythmBase.RhythmDoctor.Assets;
 using System.Text;
 using System.Text.Json;
@@ -8,6 +10,7 @@ namespace RhythmBase.RhythmDoctor.Converters
 {
 	internal class SpriteConverter : JsonConverter<RDSprite>
 	{
+		public SpriteReadOrWriteSettings Settings { get; init; } = new();
 		public override RDSprite? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
 		{
 			if (reader.TokenType != JsonTokenType.StartObject)
@@ -76,7 +79,10 @@ namespace RhythmBase.RhythmDoctor.Converters
 								switch (propertyName)
 								{
 									case "name":
-										clip._name = reader.GetString()!;
+										if (Settings.UppercasePrefixCharInExpressionNames)
+											clip.Name = reader.GetString()!.WithoutUppercasePrefix();
+										else
+											clip.Name = reader.GetString()!;
 										break;
 									case "frames":
 										if (reader.TokenType != JsonTokenType.StartArray)
@@ -155,10 +161,11 @@ namespace RhythmBase.RhythmDoctor.Converters
 			for (int i = 0; i < array.Length; i++)
 			{
 				RDSprite.Expression? clip = array[i];
-				propertyNameLength["name"] = int.Max(propertyNameLength.GetValueOrDefault("name", 0), clip.Name.Length + 2);
+				string name = Settings.UppercasePrefixCharInExpressionNames ? clip.Name.WithUppercasePrefix() : clip.Name;
+				propertyNameLength["name"] = int.Max(propertyNameLength.GetValueOrDefault("name", 0), name.Length + 2);
 				if (!propertyStringValue.TryGetValue("name", out var arr1))
 					propertyStringValue["name"] = arr1 = new string[array.Length];
-				arr1[i] = $"\"{clip._name}\"";
+				arr1[i] = $"\"{name}\"";
 				propertyNameLength["frames"] = int.Max(propertyNameLength.GetValueOrDefault("frames", 0), clip.Frames.Sum(i => i.ToString().Length) + clip.Frames.Count + 1);
 				if (!propertyStringValue.TryGetValue("frames", out var arr2))
 					propertyStringValue["frames"] = arr2 = new string[array.Length];
