@@ -76,7 +76,7 @@ namespace RhythmBase.RhythmDoctor.Converters
 								switch (propertyName)
 								{
 									case "name":
-										clip.Name = reader.GetString()!;
+										clip._name = reader.GetString()!;
 										break;
 									case "frames":
 										if (reader.TokenType != JsonTokenType.StartArray)
@@ -158,7 +158,7 @@ namespace RhythmBase.RhythmDoctor.Converters
 				propertyNameLength["name"] = int.Max(propertyNameLength.GetValueOrDefault("name", 0), clip.Name.Length + 2);
 				if (!propertyStringValue.TryGetValue("name", out var arr1))
 					propertyStringValue["name"] = arr1 = new string[array.Length];
-				arr1[i] = $"\"{clip.Name}\"";
+				arr1[i] = $"\"{clip._name}\"";
 				propertyNameLength["frames"] = int.Max(propertyNameLength.GetValueOrDefault("frames", 0), clip.Frames.Sum(i => i.ToString().Length) + clip.Frames.Count + 1);
 				if (!propertyStringValue.TryGetValue("frames", out var arr2))
 					propertyStringValue["frames"] = arr2 = new string[array.Length];

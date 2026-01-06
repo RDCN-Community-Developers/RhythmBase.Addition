@@ -244,10 +244,21 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// </summary>
 		public class Expression
 		{
+			internal string _name;
 			/// <summary>
 			/// Expression name.
 			/// </summary>
-			public required string Name { get; set; }
+			public required string Name
+			{
+				get
+				{
+					return _name.WithoutUppercasePrefix();
+				}
+				set
+				{
+					_name = value.WithUppercasePrefix();
+				}
+			}
 			/// <summary>
 			/// The list of frame indexes for expression.
 			/// </summary>
