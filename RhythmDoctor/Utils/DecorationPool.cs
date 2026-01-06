@@ -2,27 +2,45 @@
 using RhythmBase.Global.Utils;
 using RhythmBase.RhythmDoctor.Components;
 using RhythmBase.RhythmDoctor.Events;
+using RhythmBase.Global.Extensions;
+
+namespace RhythmBase.RhythmDoctor.Utils;
 
 public class DecorationPool<TKey> : IDisposable
 	where TKey : IEquatable<TKey>
 {
 	private readonly RDLevel level;
 	private readonly string filename;
-	private readonly IntervalAllocationPool<TKey, Decoration> allocationPool;
-	private readonly List<IntervalAllocationPool<TKey, Decoration>.Action> actions = [];
-
-	public DecorationPool(RDLevel level, string filename, int maxPoolSize = 1000)
+	private readonly AllocationPool<TKey, Decoration> allocationPool;
+	private readonly List<AllocationPool<TKey, Decoration>.Action> actions = [];
+	public DecorationPool(RDLevel level, string filename,
+		Action<Decoration, TKey, TKey, float>? onStateChanged = null,
+		int maxPoolSize = 1000)
 	{
 		this.level = level;
 		this.filename = filename;
-		allocationPool = new(maxPoolSize);
+		allocationPool = new(maxPoolSize)
+		{
+			OnCreateResource = (key) =>
+			{
+				Decoration deco = new Decoration()
+				{
+					Filename = filename,
+				};
+				return deco;
+			},
+			OnStateChanged = (deco, oldKey, newKey, time) =>
+			{
+				onStateChanged?.Invoke(deco, oldKey, newKey, time); ;
+			},
+		};
 	}
 
 	private void Flush()
 	{
 		allocationPool.Allocate(actions);
 
-		foreach (var pool in allocationPool.Pools)
+		foreach (var pool in allocationPool.Allocations)
 		{
 			Decoration deco = new() { Filename = filename };
 			level.Decorations.Add(deco);
@@ -31,7 +49,6 @@ public class DecorationPool<TKey> : IDisposable
 			for (int i = 0; i < sortedRanges.Length; i++)
 			{
 				var v = sortedRanges[i];
-				// 这里可根据原 Range 结构补充 y/room 等信息
 				if (i == 0)
 					deco.Add(new SetVisible() { Beat = new(level.Calculator, v.Start), Visible = true });
 				else
@@ -44,34 +61,24 @@ public class DecorationPool<TKey> : IDisposable
 					if (i == sortedRanges.Length - 1 && v.End < float.MaxValue)
 						deco.Add(new SetVisible() { Beat = new(level.Calculator, v.End), Visible = false });
 				}
-				// 如需支持 y/room，可在 Action 结构中扩展
 			}
 		}
 	}
-
-	public void Dispose() => Flush();
+	public void Dispose()
+	{
+		Flush();
+		GC.SuppressFinalize(this);
+	}
 	public Decoration Allocate(float startBeat, float endBeat, TKey target, int? y = null, RDSingleRoom? room = null)
 	{
-		actions.Add(new(startBeat, endBeat, target));
-		allocationPool.Allocate(actions);
-		actions.Clear();
+		AllocationPool<TKey, Decoration>.Action action = new(startBeat, endBeat, target);
+		actions.Add(action);
+		var deco = allocationPool.Allocate([action])[0];
+		level.Decorations.Add(deco);
+		deco.Add(new SetVisible() { Beat = new(level.Calculator, startBeat), Visible = true });
+		if (endBeat < float.MaxValue)
+			deco.Add(new SetVisible() { Beat = new(level.Calculator, endBeat), Visible = false });
+		return deco;
 
-		// 查找刚分配的资源
-		foreach (var pool in allocationPool.Pools)
-		{
-			foreach (var action in pool)
-			{
-				if (action.Start == startBeat && action.End == endBeat && action.Target.Equals(target))
-				{
-					Decoration deco = new() { Filename = filename };
-					level.Decorations.Add(deco);
-					deco.Add(new SetVisible() { Beat = new(level.Calculator, startBeat), Visible = true });
-					if (endBeat < float.MaxValue)
-						deco.Add(new SetVisible() { Beat = new(level.Calculator, endBeat), Visible = false });
-					return deco;
-				}
-			}
-		}
-		return null!;
 	}
 }
