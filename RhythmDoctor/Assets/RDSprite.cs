@@ -264,6 +264,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 			/// The frame rate of the emoticon when <c>loop == yes</c>.
 			/// </summary>
 			public float Fps { get; set; }
+			public float ReflectionOffset { get; set; }
 			/// <summary>
 			/// Pivot point offset.
 			/// </summary>

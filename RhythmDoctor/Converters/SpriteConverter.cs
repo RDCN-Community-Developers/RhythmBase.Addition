@@ -105,6 +105,9 @@ namespace RhythmBase.RhythmDoctor.Converters
 									case "fps":
 										clip.Fps = reader.GetInt32();
 										break;
+									case "reflectionOffset":
+										clip.ReflectionOffset = reader.GetSingle();
+										break;
 									case "pivotOffset":
 										ReadPair(ref reader, out float cpx, out float cpy);
 										clip.PivotOffset = new RDPointN(cpx, cpy);
@@ -185,33 +188,36 @@ namespace RhythmBase.RhythmDoctor.Converters
 				if (!propertyStringValue.TryGetValue("fps", out var arr5))
 					propertyStringValue["fps"] = arr5 = new string[array.Length];
 				arr5[i] = clip.Fps.ToString();
+				if (!propertyStringValue.TryGetValue("reflectionOffset", out var arr6))
+					propertyStringValue["reflectionOffset"] = arr6 = new string[array.Length];
+				arr6[i] = clip.ReflectionOffset.ToString();
 				if (clip.PivotOffset is RDPointN p4)
 				{
 					propertyNameLength["pivotOffset"] = int.Max(propertyNameLength.GetValueOrDefault("pivotOffset", -1), p4.ToString().Length + 3);
-					if (!propertyStringValue.TryGetValue("pivotOffset", out var arr6))
-						propertyStringValue["pivotOffset"] = arr6 = new string[array.Length];
-					arr6[i] = $"[{p4.X},{p4.Y}]";
+					if (!propertyStringValue.TryGetValue("pivotOffset", out var arr7))
+						propertyStringValue["pivotOffset"] = arr7 = new string[array.Length];
+					arr7[i] = $"[{p4.X},{p4.Y}]";
 				}
 				if (clip.PortraitOffset is RDPointN p5)
 				{
 					propertyNameLength["portraitOffset"] = int.Max(propertyNameLength.GetValueOrDefault("portraitOffset", -1), p5.ToString().Length + 3);
-					if (!propertyStringValue.TryGetValue("portraitOffset", out var arr7))
-						propertyStringValue["portraitOffset"] = arr7 = new string[array.Length];
-					arr7[i] = $"[{p5.X},{p5.Y}]";
+					if (!propertyStringValue.TryGetValue("portraitOffset", out var arr8))
+						propertyStringValue["portraitOffset"] = arr8 = new string[array.Length];
+					arr8[i] = $"[{p5.X},{p5.Y}]";
 				}
 				if (clip.PortraitScale is float sc2)
 				{
 					propertyNameLength["portraitScale"] = int.Max(propertyNameLength.GetValueOrDefault("portraitScale", -1), sc2.ToString().Length);
-					if (!propertyStringValue.TryGetValue("portraitScale", out var arr8))
-						propertyStringValue["portraitScale"] = arr8 = new string[array.Length];
-					arr8[i] = sc2.ToString();
+					if (!propertyStringValue.TryGetValue("portraitScale", out var arr9))
+						propertyStringValue["portraitScale"] = arr9 = new string[array.Length];
+					arr9[i] = sc2.ToString();
 				}
 				if (clip.PortraitSize is RDSizeNI s2)
 				{
 					propertyNameLength["portraitSize"] = int.Max(propertyNameLength.GetValueOrDefault("portraitSize", -1), s2.ToString().Length + 3);
-					if (!propertyStringValue.TryGetValue("portraitSize", out var arr9))
-						propertyStringValue["portraitSize"] = arr9 = new string[array.Length];
-					arr9[i] = $"[{s2.Width},{s2.Height}]";
+					if (!propertyStringValue.TryGetValue("portraitSize", out var arr10))
+						propertyStringValue["portraitSize"] = arr10 = new string[array.Length];
+					arr10[i] = $"[{s2.Width},{s2.Height}]";
 				}
 			}
 			writer.WriteStartArray("clips");
