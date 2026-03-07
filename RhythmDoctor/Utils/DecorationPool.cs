@@ -25,7 +25,7 @@ public class DecorationPool<TKey> : IDisposable
 			{
 				Decoration deco = new Decoration()
 				{
-					Filename = filename,
+					Character = filename,
 				};
 				return deco;
 			},
@@ -42,7 +42,7 @@ public class DecorationPool<TKey> : IDisposable
 
 		foreach (var pool in allocationPool.Allocations)
 		{
-			Decoration deco = new() { Filename = filename };
+			Decoration deco = new() { Character = filename };
 			level.Decorations.Add(deco);
 
 			var sortedRanges = pool.OrderBy(a => a.Start).ToArray();

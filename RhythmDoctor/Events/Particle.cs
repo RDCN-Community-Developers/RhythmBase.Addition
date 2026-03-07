@@ -5,7 +5,7 @@ using System.Numerics;
 
 namespace RhythmBase.RhythmDoctor.Events
 {
-	public class Particle : MacroEvent<RDAnimation>
+	public record class Particle : MacroEvent<RDAnimation>
 	{
 		private readonly Func<RDPointN3, BaseDecorationAction> action;
 		private readonly ParticleGenerator generator;

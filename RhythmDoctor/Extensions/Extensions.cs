@@ -20,7 +20,7 @@ namespace RhythmBase.RhythmDoctor.Extensions
 		}
 		public static IAssetFile? GetAsset(this Decoration decoration, RDAssetManager manager)
 		{
-			string ch = decoration.Filename;
+			string ch = decoration.Character.CustomCharacter ?? "";
 			if (string.IsNullOrWhiteSpace(ch))
 				return null;
 			return (IAssetFile?)manager.GetFile<RDSprite>(ch) ?? manager.GetFile<RDImage>(ch);
