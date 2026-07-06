@@ -20,8 +20,26 @@ namespace RhythmBase.Global.Utils
 		const int hop = sr / fps; // 441
 		const int nMels = 120;      // 低频带通
 		const int fft = 4096;
+		static readonly int fftLog2 = (int)Math.Log(fft, 2);
 		const float fmin = 27.5f;    // 低频
 		const float fmax = 800f;    // 高频
+		static readonly float[] hannWindow = CreateHannWindow(fft);
+		static readonly Dictionary<int, float[]> hannWindowCache = new Dictionary<int, float[]>();
+		static readonly object hannWindowCacheLock = new object();
+		static readonly Dictionary<string, MelBand[]> melFilterCache = new Dictionary<string, MelBand[]>();
+		static readonly object melFilterCacheLock = new object();
+
+		readonly struct MelBand
+		{
+			public readonly int Start;
+			public readonly float[] Weights;
+
+			public MelBand(int start, float[] weights)
+			{
+				Start = start;
+				Weights = weights;
+			}
+		}
 		/// <summary>
 		/// Get wave stream of the audio file.
 		/// </summary>
@@ -58,11 +76,14 @@ namespace RhythmBase.Global.Utils
 				result.Add(new List<float>());
 
 			ISampleProvider provider = stream.ToSampleProvider();
-			float[] floats = new float[c];
+			const int framesPerRead = 4096;
+			float[] floats = new float[framesPerRead * c];
 			int read = 0;
-			while ((read = provider.Read(floats, 0, c)) > 0)
-				for (int i = 0; i < c; i++)
-					result[i].Add(floats[i]);
+			while ((read = provider.Read(floats, 0, floats.Length)) > 0)
+			{
+				for (int i = 0; i < read; i++)
+					result[i % c].Add(floats[i]);
+			}
 			return result.Select(i => i.ToArray()).ToArray();
 		}
 		public static float[] GetMonoTimeDomain(this WaveStream stream)
@@ -74,17 +95,32 @@ namespace RhythmBase.Global.Utils
 		{
 			int frames = Math.Max(0, (signal.Length - fft) / hop + 1);
 			float[,] mel = new float[frames, nMels];
+			if (frames == 0)
+				return mel;
 
-			var mfb = MelFilterBank(sampleRate, fft, nMels, fmin, fmax);
+			MelBand[] mfb = GetOrCreateMelFilterBank(sampleRate, fft, nMels, fmin, fmax);
+			float[] frame = new float[fft];
+			Complex[] fftBuffer = new Complex[fft];
+			float[] magnitude = new float[fft / 2];
 
 			for (int f = 0; f < frames; f++)
 			{
-				float[] frame = new float[fft];
-				Array.Copy(signal, f * hop, frame, 0, Math.Min(fft, signal.Length - f * hop));
+				int start = f * hop;
+				int copyLength = Math.Min(fft, signal.Length - start);
+				Array.Copy(signal, start, frame, 0, copyLength);
+				if (copyLength < fft)
+					Array.Clear(frame, copyLength, fft - copyLength);
 
-				float[] mag = MagnitudeSpectrum(frame);
+				MagnitudeSpectrum(frame, hannWindow, fftBuffer, magnitude);
+
 				for (int m = 0; m < nMels; m++)
-					mel[f, m] = mfb[m].Dot(mag);
+				{
+					MelBand band = mfb[m];
+					float sum = 0;
+					for (int i = 0; i < band.Weights.Length; i++)
+						sum += band.Weights[i] * magnitude[band.Start + i];
+					mel[f, m] = sum;
+				}
 			}
 			return mel;
 		}
@@ -173,9 +209,9 @@ namespace RhythmBase.Global.Utils
 		}
 		/// <summary>
 		/// Estimate BPM candidates and find best phase offset (first beat) for each candidate.
-		/// Returns array of tuples: (bpm, peakValue, firstBeatSeconds)
+		/// Returns array of tuples: (bpm, peakValue, firstTickTimeSeconds)
 		/// </summary>
-		public static (double bpm, double score, int firstBeatFrame, double firstBeatSec)[] EstimateBPMWithOffset(float[] spectralFlux, int valueCount, double minbpm = 40, double maxbpm = 240)
+		public static (double bpm, double score, int firstTickTimeFrame, double firstTickTimeSec)[] EstimateBPMWithOffset(float[] spectralFlux, int valueCount, double minbpm = 40, double maxbpm = 240)
 		{
 			if (spectralFlux == null || spectralFlux.Length < 3)
 				return Array.Empty<(double, double, int, double)>();
@@ -224,7 +260,7 @@ namespace RhythmBase.Global.Utils
 			if (peaks.Count == 0) for (int lag = minLag; lag <= maxLag; lag++) peaks.Add((lag, autocorr[lag]));
 
 			var top = peaks.OrderByDescending(p => p.value).Take(valueCount).ToArray();
-			var results = new List<(double bpm, double score, int firstBeatFrame, double firstBeatSec)>();
+			var results = new List<(double bpm, double score, int firstTickTimeFrame, double firstTickTimeSec)>();
 			foreach (var p in top)
 			{
 				int lag = p.lag;
@@ -271,8 +307,8 @@ namespace RhythmBase.Global.Utils
 					}
 				}
 
-				double firstBeatSec = bestFrame / (double)fps;
-				results.Add((bpm, p.value * bestOffsetScore, bestFrame, firstBeatSec));
+				double firstTickTimeSec = bestFrame / (double)fps;
+				results.Add((bpm, p.value * bestOffsetScore, bestFrame, firstTickTimeSec));
 			}
 
 			return results.ToArray();
@@ -330,30 +366,15 @@ namespace RhythmBase.Global.Utils
 		/// <param name="samples">Audio sample.</param>
 		/// <param name="maxFrequency">The maximum frequency to be retained.</param>
 		/// <returns>An array with format [Frequency] data.</returns>
-		public static float[] GetFrameFrequencyDomain(WaveFormat waveFormat, float[] samples, int maxFrequency = 2500)
+		public static float[] GetFrameFrequencyDomain(WaveFormat waveFormat, float[] samples, int maxFrequency = 2500, bool applyHannWindow = true)
 		{
-			List<float[]> finalDatas = new List<float[]>();
-			int log = (int)Math.Ceiling(Math.Log(samples.Length, 2));
-			int newLen = (int)Math.Pow(2, log);
-			float[] filledSamples = new float[newLen];
-			Array.Copy(samples, filledSamples, samples.Length);
-			Complex[] complexSrc = filledSamples
-				.Select(v => new Complex() { X = v })
-				.ToArray();
-			FastFourierTransform.FFT(false, log, complexSrc);
+			if (samples.Length == 0)
+				return Array.Empty<float>();
 
-			Complex[] halfData = complexSrc
-				.Take(complexSrc.Length / 2)
-				.ToArray();
-			float[] dftData = halfData
-				.Select(v => (float)Math.Sqrt(v.X * v.X + v.Y * v.Y))
-				.ToArray();
-
-			int count = Math.Max(0, (int)(maxFrequency / (waveFormat.SampleRate / (double)filledSamples.Length)));
-			float[] finalData = dftData.Take(count).ToArray();
-			finalDatas.Add(dftData);
-
-			return finalData;
+			GetPow2Params(samples.Length, out int newLen, out int log);
+			Complex[] fftBuffer = new Complex[newLen];
+			float[]? window = applyHannWindow ? GetOrCreateHannWindow(newLen) : null;
+			return GetFrameFrequencyDomainInternal(waveFormat, samples, 0, samples.Length, maxFrequency, newLen, log, window, fftBuffer);
 		}
 
 		/// <summary>
@@ -364,22 +385,277 @@ namespace RhythmBase.Global.Utils
 		/// <param name="windowWidth">The sample width.</param>
 		/// <param name="maxFrequency">The maximum frequency to be retained.</param>
 		/// <returns>An array with format [Channel][Frame][Frequency] data.</returns>
-		public static float[][][] GetFrequencyDomain(WaveFormat waveFormat, float[][] timeDomainData, int windowWidth, int maxFrequency = 2500)
+		public static float[][][] GetFrequencyDomain(WaveFormat waveFormat, float[][] timeDomainData, int windowWidth, int maxFrequency = 2500, bool applyHannWindow = true)
 		{
+			GetPow2Params(windowWidth, out int fftLen, out int fftLog);
+			Complex[] fftBuffer = new Complex[fftLen];
+			float[]? window = applyHannWindow ? GetOrCreateHannWindow(fftLen) : null;
+
 			List<List<float[]>> result = new List<List<float[]>>();
 			for (int i = 0; i < waveFormat.Channels; i++)
 			{
 				result.Add(new List<float[]>());
+				float[] channelData = timeDomainData[i];
 				int index = 0;
-				while (index + windowWidth <= timeDomainData[i].Length)
+				while (index + windowWidth <= channelData.Length)
 				{
-					float[] buffer = timeDomainData[i].Skip(index).Take(windowWidth).ToArray();
-					index += windowWidth / 2;
-					float[] outData = GetFrameFrequencyDomain(waveFormat, buffer, maxFrequency);
+					float[] outData = GetFrameFrequencyDomainInternal(waveFormat, channelData, index, windowWidth, maxFrequency, fftLen, fftLog, window, fftBuffer);
 					result[i].Add(outData);
+					index += windowWidth / 2;
 				}
 			}
 			return result.Select(i => i.ToArray()).ToArray();
+		}
+
+		/// <summary>
+		/// Convert a timestamp (seconds) to the nearest center-aligned frame index for outputs generated by GetFrequencyDomain.
+		/// </summary>
+		/// <param name="timeSeconds">Timestamp in seconds.</param>
+		/// <param name="sampleRate">Audio sample rate.</param>
+		/// <param name="windowWidth">Window width used by GetFrequencyDomain.</param>
+		/// <returns>Clamped frame index.</returns>
+		public static int TimeToFrameIndex(double timeSeconds, int sampleRate, int windowWidth)
+		{
+			if (sampleRate <= 0)
+				throw new ArgumentOutOfRangeException(nameof(sampleRate), "Sample rate must be greater than zero.");
+			if (windowWidth <= 0)
+				throw new ArgumentOutOfRangeException(nameof(windowWidth), "Window width must be greater than zero.");
+
+			double safeTime = Math.Max(0, timeSeconds);
+			int hopLength = Math.Max(1, windowWidth / 2);
+			int samplePosition = (int)Math.Round(safeTime * sampleRate);
+			int frame = (int)Math.Round((samplePosition - windowWidth / 2.0) / hopLength);
+			return frame;
+		}
+
+		/// <summary>
+		/// Get the start/center/end timestamp (seconds) for a frame index generated by GetFrequencyDomain.
+		/// </summary>
+		/// <param name="frameIndex">Frame index.</param>
+		/// <param name="sampleRate">Audio sample rate.</param>
+		/// <param name="windowWidth">Window width used by GetFrequencyDomain.</param>
+		/// <returns>(startSec, centerSec, endSec) for the specified frame.</returns>
+		public static (double startSec, double centerSec, double endSec) FrameIndexToTimeRange(int frameIndex, int sampleRate, int windowWidth)
+		{
+			if (sampleRate <= 0)
+				throw new ArgumentOutOfRangeException(nameof(sampleRate), "Sample rate must be greater than zero.");
+			if (windowWidth <= 0)
+				throw new ArgumentOutOfRangeException(nameof(windowWidth), "Window width must be greater than zero.");
+
+			int safeFrame = Math.Max(0, frameIndex);
+			int hopLength = Math.Max(1, windowWidth / 2);
+			double startSec = safeFrame * hopLength / (double)sampleRate;
+			double centerSec = (safeFrame * hopLength + windowWidth * 0.5) / sampleRate;
+			double endSec = (safeFrame * hopLength + windowWidth) / (double)sampleRate;
+			return (startSec, centerSec, endSec);
+		}
+
+		/// <summary>
+		/// Reconstruct a mono time-domain signal from a magnitude spectrogram (frame x frequency bin).
+		/// This is an approximate inversion that assumes zero phase.
+		/// </summary>
+		/// <param name="spectrogram">Magnitude spectrogram with shape [Frame][FrequencyBin].</param>
+		/// <param name="hopLength">Hop length between adjacent frames.</param>
+		/// <param name="applyHannWindow">Apply Hann window during overlap-add synthesis.</param>
+		/// <param name="normalizePeak">Normalize peak to avoid clipping.</param>
+		/// <returns>Reconstructed mono signal.</returns>
+		public static float[] SpectrogramToAudio(float[][] spectrogram, int hopLength, bool applyHannWindow = true, bool normalizePeak = true)
+		{
+			if (spectrogram == null || spectrogram.Length == 0)
+				return Array.Empty<float>();
+			if (hopLength <= 0)
+				throw new ArgumentOutOfRangeException(nameof(hopLength), "Hop length must be greater than zero.");
+
+			int frames = spectrogram.Length;
+			int bins = spectrogram[0]?.Length ?? 0;
+			if (bins < 2)
+				return Array.Empty<float>();
+
+			int fftSize = (bins - 1) * 2;
+			GetPow2Params(fftSize, out int checkedFftSize, out int fftLog);
+			if (checkedFftSize != fftSize)
+				throw new ArgumentException("Spectrogram bin count does not map to a power-of-two FFT size.", nameof(spectrogram));
+
+			int outputLength = (frames - 1) * hopLength + fftSize;
+			float[] output = new float[outputLength];
+			float[] norm = new float[outputLength];
+			float[]? window = applyHannWindow ? GetOrCreateHannWindow(fftSize) : null;
+			Complex[] fftBuffer = new Complex[fftSize];
+
+			for (int frameIndex = 0; frameIndex < frames; frameIndex++)
+			{
+				Array.Clear(fftBuffer, 0, fftBuffer.Length);
+				float[] frame = spectrogram[frameIndex];
+				if (frame == null)
+					continue;
+
+				int usefulBins = Math.Min(frame.Length, bins);
+				for (int k = 0; k < usefulBins; k++)
+				{
+					float mag = Math.Max(0, frame[k]);
+					fftBuffer[k].X = mag;
+					fftBuffer[k].Y = 0;
+					if (k > 0 && k < fftSize / 2)
+					{
+						fftBuffer[fftSize - k].X = mag;
+						fftBuffer[fftSize - k].Y = 0;
+					}
+				}
+
+				FastFourierTransform.FFT(false, fftLog, fftBuffer);
+
+				int offset = frameIndex * hopLength;
+				for (int n = 0; n < fftSize; n++)
+				{
+					float sample = fftBuffer[n].X / fftSize;
+					float w = window != null ? window[n] : 1f;
+					int idx = offset + n;
+					output[idx] += sample * w;
+					norm[idx] += w * w;
+				}
+			}
+
+			for (int i = 0; i < output.Length; i++)
+			{
+				if (norm[i] > 1e-9f)
+					output[i] /= norm[i];
+			}
+
+			if (normalizePeak)
+			{
+				float peak = 0f;
+				for (int i = 0; i < output.Length; i++)
+					peak = Math.Max(peak, Math.Abs(output[i]));
+				if (peak > 1f)
+				{
+					float scale = 1f / peak;
+					for (int i = 0; i < output.Length; i++)
+						output[i] *= scale;
+				}
+			}
+
+			return output;
+		}
+
+		/// <summary>
+		/// Reconstruct a mono time-domain signal from one channel frequency-domain frames.
+		/// This helper is intended for spectrograms generated by GetFrequencyDomain.
+		/// </summary>
+		/// <param name="frequencyDomainFrames">Frequency-domain frames with shape [Frame][FrequencyBin].</param>
+		/// <param name="windowWidth">Window width used when generating frequency-domain frames.</param>
+		/// <param name="applyHannWindow">Apply Hann window during overlap-add synthesis.</param>
+		/// <param name="normalizePeak">Normalize peak to avoid clipping.</param>
+		/// <returns>Reconstructed mono signal.</returns>
+		public static float[] FrequencyDomainToAudio(float[][] frequencyDomainFrames, int windowWidth, bool applyHannWindow = true, bool normalizePeak = true)
+		{
+			if (windowWidth <= 0)
+				throw new ArgumentOutOfRangeException(nameof(windowWidth), "Window width must be greater than zero.");
+
+			int hopLength = Math.Max(1, windowWidth / 2);
+			return SpectrogramToAudio(frequencyDomainFrames, hopLength, applyHannWindow, normalizePeak);
+		}
+
+		/// <summary>
+		/// Reconstruct a mono time-domain signal from multi-channel frequency-domain frames.
+		/// This helper is intended for outputs generated by GetFrequencyDomain.
+		/// </summary>
+		/// <param name="frequencyDomainData">Frequency-domain data with shape [Channel][Frame][FrequencyBin].</param>
+		/// <param name="windowWidth">Window width used when generating frequency-domain frames.</param>
+		/// <param name="mixDownChannels">Mix all channels down to mono.</param>
+		/// <param name="applyHannWindow">Apply Hann window during overlap-add synthesis.</param>
+		/// <param name="normalizePeak">Normalize peak to avoid clipping.</param>
+		/// <returns>Reconstructed mono signal.</returns>
+		public static float[] FrequencyDomainToAudio(float[][][] frequencyDomainData, int windowWidth, bool mixDownChannels = true, bool applyHannWindow = true, bool normalizePeak = true)
+		{
+			if (frequencyDomainData == null || frequencyDomainData.Length == 0)
+				return Array.Empty<float>();
+			if (windowWidth <= 0)
+				throw new ArgumentOutOfRangeException(nameof(windowWidth), "Window width must be greater than zero.");
+
+			if (!mixDownChannels || frequencyDomainData.Length == 1)
+				return FrequencyDomainToAudio(frequencyDomainData[0], windowWidth, applyHannWindow, normalizePeak);
+
+			float[] first = FrequencyDomainToAudio(frequencyDomainData[0], windowWidth, applyHannWindow, false);
+			if (first.Length == 0)
+				return first;
+
+			float[] mixed = new float[first.Length];
+			Array.Copy(first, mixed, first.Length);
+
+			for (int ch = 1; ch < frequencyDomainData.Length; ch++)
+			{
+				float[] channelAudio = FrequencyDomainToAudio(frequencyDomainData[ch], windowWidth, applyHannWindow, false);
+				int len = Math.Min(mixed.Length, channelAudio.Length);
+				for (int i = 0; i < len; i++)
+					mixed[i] += channelAudio[i];
+			}
+
+			float inv = 1f / frequencyDomainData.Length;
+			for (int i = 0; i < mixed.Length; i++)
+				mixed[i] *= inv;
+
+			if (normalizePeak)
+			{
+				float peak = 0f;
+				for (int i = 0; i < mixed.Length; i++)
+					peak = Math.Max(peak, Math.Abs(mixed[i]));
+				if (peak > 1f)
+				{
+					float scale = 1f / peak;
+					for (int i = 0; i < mixed.Length; i++)
+						mixed[i] *= scale;
+				}
+			}
+
+			return mixed;
+		}
+
+		private static float[] GetFrameFrequencyDomainInternal(
+			WaveFormat waveFormat,
+			float[] source,
+			int sourceOffset,
+			int sampleLength,
+			int maxFrequency,
+			int fftLen,
+			int fftLog,
+			float[]? window,
+			Complex[] fftBuffer)
+		{
+			for (int i = 0; i < fftLen; i++)
+			{
+				float value = i < sampleLength ? source[sourceOffset + i] : 0;
+				if (window != null)
+					value *= window[i];
+				fftBuffer[i].X = value;
+				fftBuffer[i].Y = 0;
+			}
+
+			// Keep FFT direction consistent with other spectrum analysis paths.
+			FastFourierTransform.FFT(true, fftLog, fftBuffer);
+
+			int halfLength = fftLen / 2;
+			int count = Math.Max(0, (int)(maxFrequency / (waveFormat.SampleRate / (double)fftLen)));
+			count = Math.Min(count, halfLength);
+			float[] finalData = new float[count];
+			for (int i = 0; i < count; i++)
+			{
+				float x = fftBuffer[i].X;
+				float y = fftBuffer[i].Y;
+				finalData[i] = (float)Math.Sqrt(x * x + y * y);
+			}
+
+			return finalData;
+		}
+
+		private static void GetPow2Params(int inputLength, out int len, out int log)
+		{
+			len = 1;
+			log = 0;
+			while (len < inputLength)
+			{
+				len <<= 1;
+				log++;
+			}
 		}
 
 		/// <summary>
@@ -403,7 +679,7 @@ namespace RhythmBase.Global.Utils
 			}
 			return result.ToArray();
 		}
-		public static (double bpm, double firstBeatSec) Process(string file)
+		public static (double bpm, double firstTickTimeSec) Process(string file)
 		{
 			using var ws = GetWaveStream(file);
 			float[] mono = ws.GetMonoTimeDomain();
@@ -419,59 +695,118 @@ namespace RhythmBase.Global.Utils
 			}
 
 			var best = candidates.OrderByDescending(c => c.score).First();
-			Console.WriteLine(string.Join("\n", candidates.Select(c => $"BPM={c.bpm:F2}, score={c.score:F4}, firstBeatSec={c.firstBeatSec:F3}")));
-			return (best.bpm, best.firstBeatSec);
+			Console.WriteLine(string.Join("\n", candidates.Select(c => $"BPM={c.bpm:F2}, score={c.score:F4}, firstTickTimeSec={c.firstTickTimeSec:F3}")));
+			return (best.bpm, best.firstTickTimeSec);
 		}
-		private static float[] MagnitudeSpectrum(float[] frame)
+		private static void MagnitudeSpectrum(float[] frame, float[] window, Complex[] fftBuffer, float[] output)
 		{
-			int n = fft;
-			Complex[] c = [.. frame.Select(v => new Complex { X = v })];
-			FastFourierTransform.FFT(true, (int)Math.Log(n, 2), c);
-			return [.. c.Take(n / 2).Select(x => (float)Math.Sqrt(x.X * x.X + x.Y * x.Y))];
-		}
-		private static float[][] MelFilterBank(int sr, int fftBins, int nMels, float fMin, float fMax)
-		{
-			int nyq = sr / 2;
-			int m = fftBins / 2;                 // 频率点数
-			float[][] bank = new float[nMels][];
-
-			float melMin = 2595 * MathF.Log10(1 + fMin / 700);
-			float melMax = 2595 * MathF.Log10(1 + fMax / 700);
-
-			float[] melPoints = Enumerable.Range(0, nMels + 2)
-								.Select(i => melMin + i * (melMax - melMin) / (nMels + 1))
-								.ToArray();
-			float[] bin = melPoints.Select(mp => ((fftBins + 1) * (700 * (MathF.Pow(10, mp / 2595) - 1)) / sr))
-						.ToArray();
-
-			for (int i = 0; i < nMels; i++)
+			for (int i = 0; i < fft; i++)
 			{
-				float[] filt = new float[m];
-				float left = bin[i], center = bin[i + 1], right = bin[i + 2];
+				fftBuffer[i].X = frame[i] * window[i];
+				fftBuffer[i].Y = 0;
+			}
+
+			FastFourierTransform.FFT(true, fftLog2, fftBuffer);
+			for (int i = 0; i < output.Length; i++)
+			{
+				float x = fftBuffer[i].X;
+				float y = fftBuffer[i].Y;
+				output[i] = (float)Math.Sqrt(x * x + y * y);
+			}
+		}
+
+		private static MelBand[] GetOrCreateMelFilterBank(int sampleRate, int fftBins, int melBins, float lowFreq, float highFreq)
+		{
+			string key = $"{sampleRate}_{fftBins}_{melBins}_{lowFreq:F3}_{highFreq:F3}";
+			lock (melFilterCacheLock)
+			{
+				if (!melFilterCache.TryGetValue(key, out MelBand[]? bank))
+				{
+					bank = MelFilterBankSparse(sampleRate, fftBins, melBins, lowFreq, highFreq);
+					melFilterCache[key] = bank;
+				}
+				return bank!;
+			}
+		}
+
+		private static MelBand[] MelFilterBankSparse(int sampleRate, int fftBins, int melBins, float lowFreq, float highFreq)
+		{
+			int spectrumSize = fftBins / 2;
+			MelBand[] bank = new MelBand[melBins];
+
+			float melMin = 2595 * MathF.Log10(1 + lowFreq / 700);
+			float melMax = 2595 * MathF.Log10(1 + highFreq / 700);
+			float[] melPoints = new float[melBins + 2];
+			float[] bins = new float[melBins + 2];
+
+			for (int i = 0; i < melPoints.Length; i++)
+			{
+				melPoints[i] = melMin + i * (melMax - melMin) / (melBins + 1);
+				bins[i] = (fftBins + 1) * (700 * (MathF.Pow(10, melPoints[i] / 2595) - 1)) / sampleRate;
+			}
+
+			for (int i = 0; i < melBins; i++)
+			{
+				float left = bins[i];
+				float center = bins[i + 1];
+				float right = bins[i + 2];
 
 				int start = Math.Max(0, (int)Math.Ceiling(left));
-				int cen = (int)Math.Floor(center);
-				int end = Math.Min(m - 1, (int)Math.Floor(right));
+				int centerBin = (int)Math.Floor(center);
+				int end = Math.Min(spectrumSize - 1, (int)Math.Floor(right));
 
-				for (int k = start; k <= cen && k < m; k++)
-					filt[k] = (k - left) / (float)(center - left);
-				for (int k = Math.Max(cen + 1, 0); k <= end; k++)
-					filt[k] = (right - k) / (float)(right - center);
+				if (end < start)
+				{
+					bank[i] = new MelBand(0, Array.Empty<float>());
+					continue;
+				}
 
-				bank[i] = filt;
+				float[] weights = new float[end - start + 1];
+				for (int k = start; k <= end; k++)
+				{
+					float weight;
+					if (k <= centerBin)
+					{
+						weight = center > left ? (k - left) / (center - left) : 0;
+					}
+					else
+					{
+						weight = right > center ? (right - k) / (right - center) : 0;
+					}
+
+					weights[k - start] = Math.Max(0, weight);
+				}
+
+				bank[i] = new MelBand(start, weights);
 			}
+
 			return bank;
 		}
-		private static float Dot(this float[] a, float[] b)
+
+		private static float[] CreateHannWindow(int size)
 		{
-			if (a.Length != b.Length)
-				throw new ArgumentException("Vectors must have the same length.");
-			float result = 0;
-			for (int i = 0; i < a.Length; i++)
+			float[] window = new float[size];
+			if (size <= 1)
+				return window;
+
+			for (int i = 0; i < size; i++)
+				window[i] = 0.5f - 0.5f * MathF.Cos(2 * MathF.PI * i / (size - 1));
+
+			return window;
+		}
+
+		private static float[] GetOrCreateHannWindow(int size)
+		{
+			lock (hannWindowCacheLock)
 			{
-				result += a[i] * b[i];
+				if (!hannWindowCache.TryGetValue(size, out float[]? window))
+				{
+					window = CreateHannWindow(size);
+					hannWindowCache[size] = window;
+				}
+
+				return window!;
 			}
-			return result;
 		}
 	}
 }

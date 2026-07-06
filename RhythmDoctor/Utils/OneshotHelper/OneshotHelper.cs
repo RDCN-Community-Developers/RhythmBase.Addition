@@ -9,26 +9,26 @@ namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
 	}
 	public record struct OneshotPulseHit()
 	{
-		public float Beat { get; set; } // 击打时间点
+		public float TickTime { get; set; } // 击打时间点
 		public float Offset { get; set; } // 冰冻拍和灼热拍
 		public float[] Pulses { get; set; } = []; // 脉冲时间点，相对于击打时间点的偏移
 		public int Subdivision { get; set; } = 0; // 脉冲细分
 		public bool Skip { get; set; } = false;
 		public static OneshotPulseHit operator <<(OneshotPulseHit hit, float delta)
 		{
-			hit.Beat -= delta;
+			hit.TickTime -= delta;
 			return hit;
 		}
 		public static OneshotPulseHit operator >>(OneshotPulseHit hit, float delta)
 		{
-			hit.Beat += delta;
+			hit.TickTime += delta;
 			return hit;
 		}
 		public OneshotPulseHit Copy()
 		{
 			return new OneshotPulseHit()
 			{
-				Beat = Beat,
+				TickTime = TickTime,
 				Offset = Offset,
 				Pulses = [.. Pulses],
 				Skip = Skip
@@ -113,7 +113,7 @@ namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
 					case '.':
 						hits.Add(new()
 						{
-							Beat = i * (barLength / pattern.Length),
+							TickTime = i * (barLength / pattern.Length),
 							Pulses = [.. pulses.Select(p => (p - i) * (barLength / pattern.Length))]
 						});
 						break;
@@ -130,9 +130,9 @@ namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
 	public static class OneshotHelper
 	{
 		public static void AddOneshotHitPattern(
-			this RDLevel level,
+			this Level level,
 			Row e,
-			RDBeat start,
+			TickTime start,
 			OneshotHitPattern pattern,
 			bool addNurseSay = true)
 		{

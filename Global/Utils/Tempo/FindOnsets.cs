@@ -496,7 +496,7 @@ internal class Pvoc
 	private readonly int start;
 	private readonly int end;
 	private readonly float scale;
-	public Pvoc(int win_s, int hop_s)
+	public Pvoc(int win_s, int hop_s, WindowType windowType = WindowType.Hanning)
 	{
 		this.fft = new Fft(win_s);
 
@@ -505,7 +505,7 @@ internal class Pvoc
 
 		this.dataold = new float[win_s];
 		this.synthold = new float[win_s];
-		this.w = Aubio.CreateWindow(WindowType.Hanning, win_s);
+		this.w = Aubio.CreateWindow(windowType, win_s);
 
 		this.hop_s = hop_s;
 		this.win_s = win_s;
@@ -552,21 +552,22 @@ internal class AOnset
 	public float Threshold { get => pp.Threshold; set => pp.Threshold = value; }
 	public TimeSpan Minioi { get => TimeSpan.FromSeconds(minioi / samplerate); set => minioi = (int)(value.TotalSeconds * samplerate); }
 	public float Silence { get => silence; set => silence = value; }
-	public AOnset(SpecdescMethod type, int buf_s, int hop_s, int samplerate)
+	public AOnset(SpecdescMethod type, int buf_s, int hop_s, int samplerate, WindowType windowType = WindowType.Hanning,
+		float threshold = 0.3f, float silence = -70f, double minioiMs = 20.0)
 	{
 		this.samplerate = samplerate;
 		this.hop_size = hop_s;
 
-		pv = new(buf_s, hop_s);
+		pv = new(buf_s, hop_s, windowType);
 		pp = new();
 		od = new(type, buf_s);
 		fftgrain = new ComplexVector(buf_s);
 		desc = new float[1];
 
-		Threshold = 0.3f;
+		Threshold = threshold;
 		Delay = (int)(4.3f * hop_s);
-		Minioi = TimeSpan.FromMilliseconds(20);
-		Silence = -70f;
+		Minioi = TimeSpan.FromMilliseconds(minioiMs);
+		Silence = silence;
 
 		last_onset = 0;
 		total_frames = 0;
@@ -604,7 +605,8 @@ internal class AOnset
 internal static class FindOnsets
 {
 	internal static SpecdescMethod method = SpecdescMethod.ComplexDomain;
-	public static void Run(float[] samples, int samplerate, int numThreads, List<Onset> result)
+	internal static WindowType windowType = WindowType.Hanning;
+	public static void Run(float[] samples, int samplerate, int numThreads, List<Onset> result, TempoDetectionConfig config)
 	{
 		const int windowlen = 256;
 		const int bufsize = windowlen * 4;
@@ -616,7 +618,7 @@ internal static class FindOnsets
 
 			Parallel.For(0, numThreads, thread =>
 			{
-				AOnset onset = new(method, bufsize, windowlen, samplerate);
+				AOnset onset = new(method, bufsize, windowlen, samplerate, config.OnsetWindowType);
 				float[] samplevec = new float[windowlen];
 				float[] beatvec = new float[2];
 
@@ -637,12 +639,12 @@ internal static class FindOnsets
 					}
 				}
 			});
-			// muitithread result is useless
+			// muitihread result is useless
 			//result.AddRange(concurrentOnsets);
 		}
 		else
 		{
-			AOnset onset = new(method, bufsize, windowlen, samplerate);
+			AOnset onset = new(method, bufsize, windowlen, samplerate, config.OnsetWindowType);
 			float[] samplevec = new float[windowlen], beatvec = new float[2];
 			for (int i = 0; i <= samples.Length - windowlen; i += windowlen)
 			{
@@ -657,3 +659,4 @@ internal static class FindOnsets
 		}
 	}
 }
+

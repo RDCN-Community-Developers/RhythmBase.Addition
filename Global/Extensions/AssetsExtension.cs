@@ -116,19 +116,19 @@ namespace RhythmBase.Global.Extensions
 			}
 			return OutGlow;
 		}
-		public static SKColor ToSKColor(this RDColor color) => new(color.R, color.G, color.B, color.A);
-		public static RDColor ToRDColor(this SKColor color) => RDColor.FromRgba(color.Red, color.Green, color.Blue, color.Alpha);
-		public static SKRectI ToSKRect(this RDRectNI rect) => new(rect.Left, rect.Top, rect.Right, rect.Bottom);
-		public static RDRectNI ToRDRect(this SKRectI rect) => new(rect.Left, rect.Top, rect.Right, rect.Bottom);
-		public static SKRect ToSKRect(this RDRectN rect) => new(rect.Left, rect.Top, rect.Right, rect.Bottom);
-		public static RDRectN ToRDRect(this SKRect rect) => new(rect.Left, rect.Top, rect.Right, rect.Bottom);
-		public static SKPointI ToSKPoint(this RDPointNI point) => new(point.X, point.Y);
-		public static RDPointNI ToRDPoint(this SKPointI point) => new(point.X, point.Y);
-		public static SKPoint ToSKPoint(this RDPointN point) => new(point.X, point.Y);
-		public static RDPointN ToRDPoint(this SKPoint point) => new(point.X, point.Y);
-		public static SKSizeI ToSKSize(this RDSizeNI size) => new(size.Width, size.Height);
-		public static RDSizeNI ToRDSize(this SKSizeI size) => new(size.Width, size.Height);
-		public static SKSize ToSKSize(this RDSizeN size) => new(size.Width, size.Height);
-		public static RDSizeN ToRDSize(this SKSize size) => new(size.Width, size.Height);
+		public static SKColor ToSKColor(this Color color) => new(color.R, color.G, color.B, color.A);
+		public static Color ToColor(this SKColor color) => Color.FromRgba(color.Red, color.Green, color.Blue, color.Alpha);
+		public static SKRectI ToSKRect(this RectNI rect) => new(rect.Left, rect.Top, rect.Right, rect.Bottom);
+		public static RectNI ToRect(this SKRectI rect) => new(rect.Left, rect.Top, rect.Right, rect.Bottom);
+		public static SKRect ToSKRect(this RectN rect) => new(rect.Left, rect.Top, rect.Right, rect.Bottom);
+		public static RectN ToRect(this SKRect rect) => new(rect.Left, rect.Top, rect.Right, rect.Bottom);
+		public static SKPointI ToSKPoint(this PointNI point) => new(point.X, point.Y);
+		public static PointNI ToRDPoint(this SKPointI point) => new(point.X, point.Y);
+		public static SKPoint ToSKPoint(this PointN point) => new(point.X, point.Y);
+		public static PointN ToRDPoint(this SKPoint point) => new(point.X, point.Y);
+		public static SKSizeI ToSKSize(this SizeNI size) => new(size.Width, size.Height);
+		public static SizeNI ToRDSize(this SKSizeI size) => new(size.Width, size.Height);
+		public static SKSize ToSKSize(this SizeN size) => new(size.Width, size.Height);
+		public static SizeN ToRDSize(this SKSize size) => new(size.Width, size.Height);
 	}
 }

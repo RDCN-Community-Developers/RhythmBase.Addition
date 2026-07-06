@@ -1,17 +1,20 @@
-﻿using RhythmBase.RhythmDoctor.Components;
+﻿using RhythmBase.Global.Components;
+using RhythmBase.RhythmDoctor.Components;
 using RhythmBase.RhythmDoctor.Events;
 
-namespace RhythmBase.RhythmDoctor.Extensions
+namespace RhythmBase.RhythmDoctor.Extensions;
+
+public static class CommentExtensions
 {
-	public static class CommentExtensions
+	public enum RangeTagType
 	{
-		public enum RangeTagType
-		{
-			None,
-			Start,
-			End,
-		}
-		public static IEnumerable<IBaseEvent> InCommentRange<TEvent>(this OrderedEventCollection<TEvent> e, Func<string, bool> isCommentAvaliable) where TEvent : IBaseEvent
+		None,
+		Start,
+		End,
+	}
+	extension<TEvent>(OrderedEventCollection<TEvent> e) where TEvent : IBaseEvent
+	{
+		public IEnumerable<IBaseEvent> InCommentRange(Func<string, bool> isCommentAvaliable)
 		{
 			Tab? tab = null;
 			Comment? start = null;

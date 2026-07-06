@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RhythmBase.RhythmDoctor.Utils.Perspective
+namespace RhythmBase.RhythmDoctor.Utils.Projection.Isometric
 {
 	public struct CameraMove
 	{

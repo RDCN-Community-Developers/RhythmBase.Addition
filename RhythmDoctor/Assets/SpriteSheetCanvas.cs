@@ -12,10 +12,10 @@ namespace RhythmBase.RhythmDoctor.Assets
 		public int MaxWidth { get; set; } = 1024;
 		public int MaxHeight { get; set; } = 1024;
 		public float GlowSigma { get; set; } = 5;
-		public RDColor GlowColor { get; set; } = RDColor.White;
+		public Color GlowColor { get; set; } = Color.White;
 		public float StrokeWidth { get; set; } = 1;
-		public RDColor StrokeColor { get; set; } = RDColor.White;
-		public RDRectNI Margin { get; set; } = new();
+		public Color StrokeColor { get; set; } = Color.White;
+		public RectNI Margin { get; set; } = new();
 		public SKPaint DefaultEffect { get; set; } = new()
 		{
 			Color = SKColors.Black,
@@ -36,14 +36,14 @@ namespace RhythmBase.RhythmDoctor.Assets
 		private SKRectI currentMaxRect = new();
 		private readonly SpriteSheetBook book = new();
 		public float DefaultGlowSigma { get; set; } = 5;
-		public RDColor DefaultGlowColor { get; set; } = RDColor.White;
+		public Color DefaultGlowColor { get; set; } = Color.White;
 		public float DefaultStrokeWidth { get; set; } = 1;
-		public RDColor DefaultOutlineColor { get; set; } = RDColor.White;
+		public Color DefaultOutlineColor { get; set; } = Color.White;
 		public SKPaint DefaultEffect { get; set; } = new()
 		{
 			Color = SKColors.Black,
 		};
-		public RDRectNI Margin { get; set; } = new();
+		public RectNI Margin { get; set; } = new();
 		public int CurrentPage => curPage;
 		public SpriteSheetCanvas(OutputDirection direction, SKSizeI maxSize) : this(direction, maxSize.Width, maxSize.Height) { }
 		public SpriteSheetCanvas(OutputDirection direction) : this(direction, int.MaxValue, int.MaxValue) { }

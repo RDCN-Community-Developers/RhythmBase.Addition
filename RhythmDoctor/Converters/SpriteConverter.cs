@@ -34,26 +34,26 @@ namespace RhythmBase.RhythmDoctor.Converters
 						break;
 					case "size":
 						ReadPair(ref reader, out int w, out int h);
-						sprite.Size = new RDSizeNI(w, h);
+						sprite.Size = new SizeNI(w, h);
 						break;
 					case "rowPreviewOffset":
 						ReadPair(ref reader, out float rx, out float ry);
-						sprite.RowPreviewOffset = new RDPointN(rx, ry);
+						sprite.RowPreviewOffset = new PointN(rx, ry);
 						break;
 					case "rowPreviewFrame":
 						sprite.RowPreviewFrame = reader.GetUInt32();
 						break;
 					case "pivotOffset":
 						ReadPair(ref reader, out float px, out float py);
-						sprite.PivotOffset = new RDPointN(px, py);
+						sprite.PivotOffset = new PointN(px, py);
 						break;
 					case "portraitOffset":
 						ReadPair(ref reader, out float pox, out float poy);
-						sprite.PortraitOffset = new RDPointN(pox, poy);
+						sprite.PortraitOffset = new PointN(pox, poy);
 						break;
 					case "portraitSize":
 						ReadPair(ref reader, out int psw, out int psh);
-						sprite.PortraitSize = new RDSizeNI(psw, psh);
+						sprite.PortraitSize = new SizeNI(psw, psh);
 						break;
 					case "portraitScale":
 						sprite.PortraitScale = reader.GetSingle();
@@ -110,18 +110,18 @@ namespace RhythmBase.RhythmDoctor.Converters
 										break;
 									case "pivotOffset":
 										ReadPair(ref reader, out float cpx, out float cpy);
-										clip.PivotOffset = new RDPointN(cpx, cpy);
+										clip.PivotOffset = new PointN(cpx, cpy);
 										break;
 									case "portraitOffset":
 										ReadPair(ref reader, out float cpox, out float cpoy);
-										clip.PivotOffset = new RDPointN(cpox, cpoy);
+										clip.PivotOffset = new PointN(cpox, cpoy);
 										break;
 									case "portraitScale":
 										clip.PortraitScale = reader.GetSingle();
 										break;
 									case "portraitSize":
 										ReadPair(ref reader, out int cpsw, out int cpsh);
-										clip.PortraitSize = new RDSizeNI(cpsw, cpsh);
+										clip.PortraitSize = new SizeNI(cpsw, cpsh);
 										break;
 								}
 							}
@@ -146,15 +146,15 @@ namespace RhythmBase.RhythmDoctor.Converters
 			if (!string.IsNullOrEmpty(value.Voice))
 				writer.WriteString("voice", value.Voice);
 			WritePair(writer, "size", value.Size.Width, value.Size.Height);
-			if (value.RowPreviewOffset is RDPointN p1)
+			if (value.RowPreviewOffset is PointN p1)
 				WritePair(writer, "rowPreviewOffset", p1.X, p1.Y);
 			if (value.RowPreviewFrame is uint f1)
 				writer.WriteNumber("rowPreviewFrame", f1);
-			if (value.PivotOffset is RDPointN p2)
+			if (value.PivotOffset is PointN p2)
 				WritePair(writer, "pivotOffset", p2.X, p2.Y);
-			if (value.PortraitOffset is RDPointN p3)
+			if (value.PortraitOffset is PointN p3)
 				WritePair(writer, "portraitOffset", p3.X, p3.Y);
-			if (value.PortraitSize is RDSizeNI s1)
+			if (value.PortraitSize is SizeNI s1)
 				WritePair(writer, "portraitSize", s1.Width, s1.Height);
 			if (value.PortraitScale is float sc1)
 				writer.WriteNumber("portraitScale", sc1);
@@ -191,14 +191,14 @@ namespace RhythmBase.RhythmDoctor.Converters
 				if (!propertyStringValue.TryGetValue("reflectionOffset", out var arr6))
 					propertyStringValue["reflectionOffset"] = arr6 = new string[array.Length];
 				arr6[i] = clip.ReflectionOffset.ToString();
-				if (clip.PivotOffset is RDPointN p4)
+				if (clip.PivotOffset is PointN p4)
 				{
 					propertyNameLength["pivotOffset"] = int.Max(propertyNameLength.GetValueOrDefault("pivotOffset", -1), p4.ToString().Length + 3);
 					if (!propertyStringValue.TryGetValue("pivotOffset", out var arr7))
 						propertyStringValue["pivotOffset"] = arr7 = new string[array.Length];
 					arr7[i] = $"[{p4.X},{p4.Y}]";
 				}
-				if (clip.PortraitOffset is RDPointN p5)
+				if (clip.PortraitOffset is PointN p5)
 				{
 					propertyNameLength["portraitOffset"] = int.Max(propertyNameLength.GetValueOrDefault("portraitOffset", -1), p5.ToString().Length + 3);
 					if (!propertyStringValue.TryGetValue("portraitOffset", out var arr8))
@@ -212,7 +212,7 @@ namespace RhythmBase.RhythmDoctor.Converters
 						propertyStringValue["portraitScale"] = arr9 = new string[array.Length];
 					arr9[i] = sc2.ToString();
 				}
-				if (clip.PortraitSize is RDSizeNI s2)
+				if (clip.PortraitSize is SizeNI s2)
 				{
 					propertyNameLength["portraitSize"] = int.Max(propertyNameLength.GetValueOrDefault("portraitSize", -1), s2.ToString().Length + 3);
 					if (!propertyStringValue.TryGetValue("portraitSize", out var arr10))

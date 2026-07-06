@@ -1,6 +1,6 @@
 ﻿namespace RhythmBase.Global.Utils.Tempo;
 
-internal enum WindowType
+public enum WindowType
 {
 	Rectangle,
 	Hamming,
@@ -64,6 +64,14 @@ internal static class Aubio
 		float[] win = new float[length];
 		SetWindow(win, type);
 		return win;
+	}
+	internal static double[] CreateWindowDouble(WindowType type, int length)
+	{
+		float[] fwin = CreateWindow(type, length);
+		double[] dwin = new double[length];
+		for (int i = 0; i < length; i++)
+			dwin[i] = fwin[i];
+		return dwin;
 	}
 	internal static float Median(float[] input)
 	{

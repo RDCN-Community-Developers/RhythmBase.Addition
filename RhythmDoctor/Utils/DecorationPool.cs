@@ -9,11 +9,11 @@ namespace RhythmBase.RhythmDoctor.Utils;
 public class DecorationPool<TKey> : IDisposable
 	where TKey : IEquatable<TKey>
 {
-	private readonly RDLevel level;
+	private readonly Level level;
 	private readonly string filename;
 	private readonly AllocationPool<TKey, Decoration> allocationPool;
 	private readonly List<AllocationPool<TKey, Decoration>.Action> actions = [];
-	public DecorationPool(RDLevel level, string filename,
+	public DecorationPool(Level level, string filename,
 		Action<Decoration, TKey, TKey, float>? onStateChanged = null,
 		int maxPoolSize = 1000)
 	{
@@ -50,16 +50,16 @@ public class DecorationPool<TKey> : IDisposable
 			{
 				var v = sortedRanges[i];
 				if (i == 0)
-					deco.Add(new SetVisible() { Beat = new(level.Calculator, v.Start), Visible = true });
+					deco.Add(new SetVisible() { TickTime = new(level.Calculator, v.Start), Visible = true });
 				else
 				{
 					if (sortedRanges[i - 1].End < v.Start)
 					{
-						deco.Add(new SetVisible() { Beat = new(level.Calculator, sortedRanges[i - 1].End), Visible = false });
-						deco.Add(new SetVisible() { Beat = new(level.Calculator, v.Start), Visible = true });
+						deco.Add(new SetVisible() { TickTime = new(level.Calculator, sortedRanges[i - 1].End), Visible = false });
+						deco.Add(new SetVisible() { TickTime = new(level.Calculator, v.Start), Visible = true });
 					}
 					if (i == sortedRanges.Length - 1 && v.End < float.MaxValue)
-						deco.Add(new SetVisible() { Beat = new(level.Calculator, v.End), Visible = false });
+						deco.Add(new SetVisible() { TickTime = new(level.Calculator, v.End), Visible = false });
 				}
 			}
 		}
@@ -69,15 +69,15 @@ public class DecorationPool<TKey> : IDisposable
 		Flush();
 		GC.SuppressFinalize(this);
 	}
-	public Decoration Allocate(float startBeat, float endBeat, TKey target, int? y = null, RDSingleRoom? room = null)
+	public Decoration Allocate(float startTickTime, float endTickTime, TKey target, int? y = null, SingleRoom? room = null)
 	{
-		AllocationPool<TKey, Decoration>.Action action = new(startBeat, endBeat, target);
+		AllocationPool<TKey, Decoration>.Action action = new(startTickTime, endTickTime, target);
 		actions.Add(action);
 		var deco = allocationPool.Allocate([action])[0];
 		level.Decorations.Add(deco);
-		deco.Add(new SetVisible() { Beat = new(level.Calculator, startBeat), Visible = true });
-		if (endBeat < float.MaxValue)
-			deco.Add(new SetVisible() { Beat = new(level.Calculator, endBeat), Visible = false });
+		deco.Add(new SetVisible() { TickTime = new(level.Calculator, startTickTime), Visible = true });
+		if (endTickTime < float.MaxValue)
+			deco.Add(new SetVisible() { TickTime = new(level.Calculator, endTickTime), Visible = false });
 		return deco;
 
 	}

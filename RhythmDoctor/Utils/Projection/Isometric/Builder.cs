@@ -6,18 +6,18 @@ using RhythmBase.RhythmDoctor.Extensions;
 using System.Collections.ObjectModel;
 using System.Numerics;
 
-namespace RhythmBase.RhythmDoctor.Utils.Perspective
+namespace RhythmBase.RhythmDoctor.Utils.Projection.Isometric
 {
 	public class Builder
 	{
-		private readonly RDLevel level;
+		private readonly Level level;
 		private readonly Viewer viewer = new();
 		internal Result3D<Room>? lastLook;
-		public RDSingleRoom XIndex { get; set; } = RDRoomIndex.None;
-		public RDSingleRoom YIndex { get; set; } = RDRoomIndex.None;
-		public RDSingleRoom ZIndex { get; set; } = RDRoomIndex.None;
+		public SingleRoom XIndex { get; set; } = RoomIndex.None;
+		public SingleRoom YIndex { get; set; } = RoomIndex.None;
+		public SingleRoom ZIndex { get; set; } = RoomIndex.None;
 		public ObservableCollection<PerspectivePoint> Points { get; } = [];
-		public Builder(RDLevel level)
+		public Builder(Level level)
 		{
 			this.level = level;
 			Points.CollectionChanged += (s, e) =>
@@ -30,53 +30,53 @@ namespace RhythmBase.RhythmDoctor.Utils.Perspective
 						p.parent = this;
 			};
 		}
-		public void Initialize(RDBeat beat)
+		public void Initialize(TickTime beat)
 		{
-			if (XIndex != RDRoomIndex.None)
-				level.Add(new SetRoomContentMode() { Beat = beat, Y = 0, Mode = ContentMode.AspectFill });
-			if (XIndex != RDRoomIndex.None)
-				level.Add(new SetRoomContentMode() { Beat = beat, Y = 1, Mode = ContentMode.AspectFill });
-			if (XIndex != RDRoomIndex.None)
-				level.Add(new SetRoomContentMode() { Beat = beat, Y = 2, Mode = ContentMode.AspectFill });
+			if (XIndex != RoomIndex.None)
+				level.Add(new SetRoomContentMode() { TickTime = beat, Y = 0, Mode = ContentMode.AspectFill });
+			if (XIndex != RoomIndex.None)
+				level.Add(new SetRoomContentMode() { TickTime = beat, Y = 1, Mode = ContentMode.AspectFill });
+			if (XIndex != RoomIndex.None)
+				level.Add(new SetRoomContentMode() { TickTime = beat, Y = 2, Mode = ContentMode.AspectFill });
 		}
-		public void LookFrom(RDPointN3 p, RDBeat beat)
+		public void LookFrom(PointN3 p, TickTime beat)
 		{
 			var result = viewer.LookFrom(p);
 			lastLook = result;
-			if (XIndex != RDRoomIndex.None)
+			if (XIndex != RoomIndex.None)
 			{
 				MoveRoom mrx = result.X.GetMoveRoom();
-				mrx.Beat = beat;
+				mrx.TickTime = beat;
 				mrx.Y = XIndex.Value;
 				mrx.Duration = 0;
 				level.Add(mrx);
 			}
-			if (YIndex != RDRoomIndex.None)
+			if (YIndex != RoomIndex.None)
 			{
 				MoveRoom mry = result.Y.GetMoveRoom();
-				mry.Beat = beat;
+				mry.TickTime = beat;
 				mry.Y = YIndex.Value;
 				mry.Duration = 0;
 				level.Add(mry);
 			}
-			if (ZIndex != RDRoomIndex.None)
+			if (ZIndex != RoomIndex.None)
 			{
 				MoveRoom mrz = result.Z.GetMoveRoom();
-				mrz.Beat = beat;
+				mrz.TickTime = beat;
 				mrz.Y = ZIndex.Value;
 				mrz.Duration = 0;
 				level.Add(mrz);
 			}
 		}
-		public void LookFrom(RDPointN3 p, RDBeat beat, float duration, int frameCount, EaseType ease = EaseType.Linear)
+		public void LookFrom(PointN3 p, TickTime beat, float duration, int frameCount, EaseType ease = EaseType.Linear)
 		{
 			Vector3 oc = viewer.Camera.ToVector3();
 			Vector3 cc = p.ToVector3();
 			beat = new(level.Calculator, beat);
 			for (int i = 0; i < frameCount; i++)
 			{
-				RDBeat b = beat + duration * (i / (float)(frameCount - 1));
-				RDPointN3 curp = Vector3.Lerp(oc, cc, (float)ease.Calculate(i / (float)(frameCount - 1))).ToRDPointN3();
+				TickTime b = beat + duration * (i / (float)(frameCount - 1));
+				PointN3 curp = Vector3.Lerp(oc, cc, (float)ease.Calculate(i / (float)(frameCount - 1))).ToPointN3();
 				LookFrom(curp, b);
 				foreach (var point in Points)
 				{

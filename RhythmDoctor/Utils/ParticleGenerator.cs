@@ -22,16 +22,16 @@ namespace RhythmBase.RhythmDoctor.Utils
 			/// <summary>
 			/// The position of the particle in 3D space.
 			/// </summary>
-			public RDPointN3 Position;
+			public PointN3 Position;
 		}
 		private class ParticleAction
 		{
-			public RDBeat Beat;
+			public TickTime TickTime;
 			public RDAnimation Animation;
-			public required Func<RDPointN3, BaseDecorationAction> Action;
+			public required Func<PointN3, BaseDecorationAction> Action;
 			public bool Flushed = false;
 		}
-		private readonly RDLevel level;
+		private readonly Level level;
 		internal readonly List<Particle> particles = [];
 		public readonly Random Random = new();
 		private readonly List<ParticleAction> actions = [];
@@ -44,7 +44,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 		/// <param name="startDepth">The starting depth for the particles.</param>
 		/// <param name="count">The number of particles to generate.</param>
 		/// <param name="random">The random number generator to use.</param>
-		public ParticleGenerator(RDLevel level, RDSingleRoom room, int startDepth, int count, Random random)
+		public ParticleGenerator(Level level, SingleRoom room, int startDepth, int count, Random random)
 		{
 			this.level = level;
 			this.Random = random;
@@ -57,7 +57,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 										Room = room,
 										Visible = false,
 								},
-								Position = new RDPointN3(
+								Position = new PointN3(
 										random.NextSingle(),
 										random.NextSingle(),
 										(i - startDepth) / (float)count)
@@ -74,7 +74,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 		/// <param name="room">The room in which the particles are generated.</param>
 		/// <param name="startDepth">The starting depth for the particles.</param>
 		/// <param name="count">The number of particles to generate.</param>
-		public ParticleGenerator(RDLevel level, RDSingleRoom room, int startDepth, int count)
+		public ParticleGenerator(Level level, SingleRoom room, int startDepth, int count)
 				: this(level, room, startDepth, count, Random.Shared) { }
 
 		/// <summary>
@@ -84,7 +84,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 		{
 			for (int i = 0; i < particles.Count; i++)
 			{
-				particles[i].Position = new RDPointN3(
+				particles[i].Position = new PointN3(
 						Random.NextSingle(),
 						Random.NextSingle(),
 						i / (float)particles.Count);
@@ -96,11 +96,11 @@ namespace RhythmBase.RhythmDoctor.Utils
 		/// </summary>
 		/// <param name="animation">The animation associated with the action.</param>
 		/// <param name="action">A function that generates a decoration action based on a particle's position.</param>
-		public void AddAction(RDBeat beat, RDAnimation animation, Func<RDPointN3, BaseDecorationAction> action)
+		public void AddAction(TickTime beat, RDAnimation animation, Func<PointN3, BaseDecorationAction> action)
 		{
 			actions.Add(new ParticleAction()
 			{
-				Beat = beat,
+				TickTime = beat,
 				Animation = animation.WithRandom(Random),
 				Action = action
 			});
@@ -120,7 +120,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 					var deco = particle.Deco;
 					BaseDecorationAction decoact = action.Action(particle.Position);
 					deco.Add(decoact);
-					decoact.Beat = action.Animation.RandomizedTime(action.Beat);
+					decoact.TickTime = action.Animation.RandomizedTime(action.TickTime);
 					if (decoact is IDurationEvent e)
 						e.Duration = action.Animation.RandomizedDuration();
 					if (decoact is IEaseEvent e2)
@@ -129,6 +129,5 @@ namespace RhythmBase.RhythmDoctor.Utils
 				}
 			}
 		}
-		public Events.Particle GetParticle(Func<RDPointN3, BaseDecorationAction> action) => new(this, action);
 	}
 }

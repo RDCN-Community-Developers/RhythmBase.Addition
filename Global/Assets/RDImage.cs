@@ -17,7 +17,7 @@ namespace RhythmBase.Global.Assets
 			set => _image = new(value);
 		}
 		/// <inheritdoc/>
-		public RDSizeNI Size { get; private set; }
+		public SizeNI Size { get; private set; }
 		/// <inheritdoc/>
 		public required string FilePath
 		{
@@ -45,7 +45,7 @@ namespace RhythmBase.Global.Assets
 			if (imgFile == null)
 				return null;
 			image.Image = imgFile;
-			image.Size = new RDSizeNI(imgFile.Width, imgFile.Height);
+			image.Size = new SizeNI(imgFile.Width, imgFile.Height);
 			return image;
 		}
 		/// <inheritdoc/>

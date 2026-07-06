@@ -4,6 +4,6 @@
 	{
 		no,
 		yes,
-		onBeat
+		onTickTime
 	}
 }

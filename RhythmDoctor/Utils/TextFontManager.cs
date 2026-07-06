@@ -5,14 +5,13 @@ using RhythmBase.RhythmDoctor.Assets.FlexibleSprite;
 using RhythmBase.RhythmDoctor.Components;
 using RhythmBase.RhythmDoctor.Events;
 using SkiaSharp;
+using static RhythmBase.RhythmDoctor.Extensions.Extensions;
 
 namespace RhythmBase.RhythmDoctor.Utils
 {
-	public record struct TextInfo(string Character, RDPointN Position, RDRectN Bound, float AdvanceX, RDSizeNI Size)
+	public record struct TextInfo(string Character, PointN Position, RectN Bound, float AdvanceX, SizeNI Size)
 	{
-		public readonly RDPointN DecorationPivot => new(
-			Position.X / Size.Width * 100,
-			(1 - Position.Y / Size.Height) * 100);
+		public readonly PointN DecorationPivot => Position.ToPercentagePoint(Size);
 	}
 	public class TextFontManager
 	{
@@ -20,7 +19,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 		private readonly string filename;
 		private readonly SKFont font;
 		private readonly SpriteSheetCanvas spriteSheetCanvas;
-		private bool isBuilt { get; set; } = false;
+		private bool isBuilt = false;
 		private SpriteSheetBook? builtBook = null;
 		private DecorationPool<string>[] pools = [];
 		public TextFontManager AddWord(string word)
@@ -28,7 +27,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 			if (infos.TryGetValue(word, out _))
 				return this;
 			var rect = spriteSheetCanvas.DrawText(word, font, out var pos, out var width);
-			TextInfo newInfo = new(word, pos.ToRDPoint(), rect.ToRDRect(), width, default);
+			TextInfo newInfo = new(word, pos.ToRDPoint(), rect.ToRect(), width, default);
 			infos[word] = newInfo;
 			return this;
 		}
@@ -44,14 +43,14 @@ namespace RhythmBase.RhythmDoctor.Utils
 			this.filename = filename;
 			spriteSheetCanvas = new SpriteSheetCanvas(settings);
 		}
-		public void Build(RDLevel level, out RDSprite[] sprites, int maxPoolSize = 1000)
+		public void Build(Level level, out RDSprite[] sprites, int maxPoolSize = 1000)
 		{
 			builtBook = spriteSheetCanvas.Build(out RDSprite[] result);
 			sprites = [.. result.Select((s, i)=>
 				{
 					s.Name = $"{filename}-{i}";
 					foreach(var clip in s.Clips)
-						clip.Loop = LoopOption.onBeat;
+						clip.Loop = LoopOption.onTickTime;
 					s.AddBlankExpressionForDecoration();
 					return s;
 				})];
@@ -60,7 +59,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 				pools[i] = new DecorationPool<string>(level, $"{filename}-{i}", (deco, oldKey, newKey, beat) => {
 					deco.Add(new PlayAnimation()
 					{
-						Beat = new(beat),
+						TickTime = new(beat),
 						Expression = newKey.WithUppercasePrefix(),
 					});
 				}, maxPoolSize);

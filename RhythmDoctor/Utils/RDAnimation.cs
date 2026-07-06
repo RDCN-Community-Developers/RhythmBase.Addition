@@ -19,7 +19,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 		public ThresholdType StartThresholdType { get; set; } = ThresholdType.InOut;
 		public float EndThreshold { get; set; } = 0;
 		public ThresholdType EndThresholdType { get; set; } = ThresholdType.InOut;
-		public readonly RDBeat RandomizedTime(RDBeat time) => time + _rTimeOff;
+		public readonly TickTime RandomizedTime(TickTime time) => time + _rTimeOff;
 		public readonly float RandomizedDuration() => Duration + _rDurOff - _rTimeOff;
 		public Random Random { get; set; } = Random.Shared;
 		public RDAnimation Randomized()

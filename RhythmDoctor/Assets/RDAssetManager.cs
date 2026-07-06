@@ -8,7 +8,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 		public T? GetFile<T>(string name) where T : IAssetFile<T>
 		{
 			if (!data.TryGetValue(name, out Lazy<IAssetFile?>? value) || value.Value is null)
-				data[name] = new Lazy<IAssetFile?>(() => T.FromFile(typeof(T) == typeof(RDBuiltInAudio) ? name : Path.Combine(baseLevel.Directory, name)));
+				data[name] = new Lazy<IAssetFile?>(() => T.FromFile(typeof(T) == typeof(RDBuiltInAudio) ? name : Path.Combine(baseLevel.ResolvedDirectory, name)));
 			return data[name].Value is T v ? v : default;
 		}
 		public void SetFile<T>(string name, T value) where T : IAssetFile<T> => data[name] = new Lazy<IAssetFile?>(value);
@@ -19,10 +19,10 @@ namespace RhythmBase.RhythmDoctor.Assets
 			foreach (var pair in data)
 				pair.Value.Value?.Save();
 		}
-		private readonly RDLevel baseLevel;
+		private readonly Level baseLevel;
 		private readonly Dictionary<string, Lazy<IAssetFile?>> data = [];
 
-		internal RDAssetManager(RDLevel level)
+		internal RDAssetManager(Level level)
 		{
 			baseLevel = level;
 		}

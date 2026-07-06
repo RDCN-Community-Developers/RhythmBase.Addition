@@ -3,16 +3,16 @@ using RhythmBase.Global.Components.Vector;
 using RhythmBase.RhythmDoctor.Extensions;
 using System.Numerics;
 
-namespace RhythmBase.RhythmDoctor.Utils.Perspective
+namespace RhythmBase.RhythmDoctor.Utils.Projection.Isometric
 {
 	public class Viewer
 	{
-		public RDPointN3 Camera { get; private set; }
+		public PointN3 Camera { get; private set; }
 		//public float Zoom { get; private set; } = 1.0f;
 		public Viewer()
 		{
 		}
-		public Result3D<Room> LookFrom(RDPointN3 p)
+		public Result3D<Room> LookFrom(PointN3 p)
 		{
 			var v = p.ToVector3();
 			Camera = p;
@@ -42,32 +42,32 @@ namespace RhythmBase.RhythmDoctor.Utils.Perspective
 			{
 				X = new()
 				{
-					Projection = new RDPointN(tx.X, tx.Y),
-					RoomDirecion = new RDPointN(vx.X, -vx.Y),
+					Projection = new PointN(tx.X, tx.Y),
+					RoomDirecion = new PointN(vx.X, -vx.Y),
 					ElementAngle = rx * bx * bz,
-					Direction = new RDPointN(tx.X, tx.Y),
+					Direction = new PointN(tx.X, tx.Y),
 					CameraValue = p.X,
 				},
 				Y = new()
 				{
-					Projection = new RDPointN(ty.X, ty.Y),
-					RoomDirecion = new RDPointN(vy.X, vy.Y),
+					Projection = new PointN(ty.X, ty.Y),
+					RoomDirecion = new PointN(vy.X, vy.Y),
 					ElementAngle = ry * bx * by,
-					Direction = new RDPointN(ty.X, ty.Y),
+					Direction = new PointN(ty.X, ty.Y),
 					CameraValue = p.Y,
 				},
 				Z = new()
 				{
-					Projection = new RDPointN(tz.X, tz.Y),
-					RoomDirecion = new RDPointN(vz.X, -vz.Y),
+					Projection = new PointN(tz.X, tz.Y),
+					RoomDirecion = new PointN(vz.X, -vz.Y),
 					ElementAngle = rz * bz * by,
-					Direction = new RDPointN(tz.X, tz.Y),
+					Direction = new PointN(tz.X, tz.Y),
 					CameraValue = p.Z,
 				},
 			};
 			return result;
 		}
-		public Result3D<Room>[] LookFrom(RDPointN3 p, int frameCount, EaseType ease = EaseType.Linear)
+		public Result3D<Room>[] LookFrom(PointN3 p, int frameCount, EaseType ease = EaseType.Linear)
 		{
 			Vector3 oc = Camera.ToVector3();
 			Vector3 cc = p.ToVector3();
@@ -76,7 +76,7 @@ namespace RhythmBase.RhythmDoctor.Utils.Perspective
 			{
 				float t = (float)ease.Calculate(i / (float)(frameCount - 1));
 				Vector3 c = Vector3.Lerp(oc, cc, t);
-				results[i] = LookFrom(new RDPointN3(c.X, c.Y, c.Z));
+				results[i] = LookFrom(new PointN3(c.X, c.Y, c.Z));
 			}
 			return results;
 		}

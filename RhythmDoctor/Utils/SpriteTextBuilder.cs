@@ -13,9 +13,9 @@ namespace RhythmBase.RhythmDoctor.Utils
 		private readonly string filename;
 		public RDSprite[] Sprites { get; }
 		public string SpriteNameOf(char c) => pages.TryGetValue(c, out int value) ? $"{Path.GetFileNameWithoutExtension(filename)}_{value}" : string.Empty;
-		public RDPointN[] GetPositions(string text, float scale = 1f)
+		public PointN[] GetPositions(string text, float scale = 1f)
 		{
-			List<RDPointN> ps = [];
+			List<PointN> ps = [];
 			float width = 0;
 			char[] chars = [.. text];
 			for (int i = 0; i < chars.Length; i++)

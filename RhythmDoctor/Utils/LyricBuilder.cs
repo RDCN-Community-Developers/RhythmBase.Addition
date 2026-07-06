@@ -8,17 +8,17 @@
 
 //namespace RhythmBase.RhythmDoctor.Utils
 //{
-//	public class LyricBuilder(RDLevel level)
+//	public class LyricBuilder(Level level)
 //	{
-//		private RDLevel _level = level;
+//		private Level _level = level;
 //		public FloatingText[] AddLyrics(Brc.Brc lyric, FloatingText template)
 //		{
 //			List<FloatingText> floatingTexts = [];
-//			RDBeat linestart = _level.DefaultBeat;
+//			TickTime linestart = _level.DefaultTickTime;
 
 //			foreach (var sentence in lyric)
 //			{
-//				RDBeat wordstart = linestart;
+//				TickTime wordstart = linestart;
 //				FloatingText? head = null;
 //				string headString = "";
 //				foreach (var line in sentence)
@@ -30,7 +30,7 @@
 //							if (head == null)
 //							{
 //								head = template.Clone<FloatingText>() ?? new FloatingText();
-//								head.Beat = wordstart;
+//								head.TickTime = wordstart;
 //								head.FadeOutRate = word.Duration;
 //								_level.Add(head);
 //								headString = word.Word;
@@ -57,7 +57,7 @@
 //		}
 //		public void AddLyrics(Brc.Brc lyric, SKFont font, string filename,
 //			SpriteSheetCanvasSettings settings,
-//			Action<Func<char, DecorationPool>, Func<string, float, RDPointN[]>, RDBeat, BrcLine> lineAction
+//			Action<Func<char, DecorationPool>, Func<string, float, PointN[]>, TickTime, BrcLine> lineAction
 //			)
 //		{
 //			HashSet<char> chars = [];
@@ -78,7 +78,7 @@
 //				pools[sprite.Name + "_" + i] = new DecorationPool(_level, sprite.Name + "_" + i);
 //			}
 
-//			RDBeat sentencestart = _level.DefaultBeat;
+//			TickTime sentencestart = _level.DefaultTickTime;
 //			foreach (var sentence in lyric)
 //			{
 //				foreach (var line in sentence)

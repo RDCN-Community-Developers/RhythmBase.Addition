@@ -31,7 +31,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 			canvas.Clear(SKColors.White);
 			bitmap.Save(filename);
 		}
-		public static Move[] GetMovesOfTriangles(RDRotatedRectN[] triangles, int width, int height)
+		public static Move[] GetMovesOfTriangles(RotatedRectN[] triangles, int width, int height)
 		{
 			Move[] moves = new Move[triangles.Length];
 			for (int i = 0; i < triangles.Length; i++)
@@ -39,7 +39,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 				var (X, Y) = VisualUtils.PixelToPercent((triangles[i].Location.X, triangles[i].Location.Y));
 				moves[i] = new Move()
 				{
-					Position = new RDPointN(X ?? 50, Y ?? 50),
+					Position = new PointN(X ?? 50, Y ?? 50),
 					Pivot = default,
 					Angle = triangles[i].Angle / float.Pi * 180f,
 					Scale = new(triangles[i].Size.Width / width, triangles[i].Size.Height / height),

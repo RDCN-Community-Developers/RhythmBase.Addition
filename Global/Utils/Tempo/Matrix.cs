@@ -17,7 +17,7 @@ internal struct Matrix<T>(int rows, int columns) where T : struct, INumber<T>
 		Matrix<T> matrix = new(size, size);
 		for (int i = 0; i < size; i++)
 		{
-			matrix[i, i] = (dynamic)1;
+			matrix[i, i] = T.One;
 		}
 		return matrix;
 	}
@@ -30,7 +30,7 @@ internal struct Matrix<T>(int rows, int columns) where T : struct, INumber<T>
 		{
 			for (int j = 0; j < b.Columns; j++)
 			{
-				dynamic sum = 0;
+				T sum = default;
 				for (int k = 0; k < a.Columns; k++)
 				{
 					sum += a[i, k] * b[k, j];
@@ -74,13 +74,13 @@ internal class Givens
 		else if (double.Abs(b) > double.Abs(a))
 		{
 			t = a / b;
-			s = -1 / double.Sqrt((dynamic)(1 + t * t));
+			s = -1 / double.Sqrt((1 + t * t));
 			c = -s * t;
 		}
 		else
 		{
 			t = b / a;
-			c = 1 / double.Sqrt((dynamic)(1 + t * t));
+			c = 1 / double.Sqrt((1 + t * t));
 			s = -c * t;
 		}
 		m_oJ[0, 0] = c; m_oJ[0, 1] = -s;

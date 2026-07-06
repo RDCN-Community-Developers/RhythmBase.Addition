@@ -1,4 +1,4 @@
-﻿namespace RhythmBase.RhythmDoctor.Utils.Perspective
+﻿namespace RhythmBase.RhythmDoctor.Utils.Projection
 {
 	public record struct Result3D<T>
 	{

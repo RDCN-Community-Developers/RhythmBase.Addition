@@ -28,7 +28,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// <summary>
 		/// The size of the sprite/image
 		/// </summary>
-		public RDSizeNI ImageSize => ImageBase is null ? default : new(ImageBase.Width, ImageBase.Height);
+		public SizeNI ImageSize => ImageBase is null ? default : new(ImageBase.Width, ImageBase.Height);
 		/// <summary>
 		/// Base layer
 		/// </summary>
@@ -56,7 +56,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// <summary>
 		/// The size of each expression.
 		/// </summary>
-		public RDSizeNI Size { get; set; }
+		public SizeNI Size { get; set; }
 		/// <summary>
 		/// Information of expressions.
 		/// </summary>
@@ -64,7 +64,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// <summary>
 		/// Image offset when the row is previewed.
 		/// </summary>
-		public RDPointN? RowPreviewOffset { get; set; }
+		public PointN? RowPreviewOffset { get; set; }
 		/// <summary>
 		/// Row preview frame.
 		/// </summary>
@@ -72,15 +72,15 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// <summary>
 		/// Pivot point offset.
 		/// </summary>
-		public RDPointN? PivotOffset { get; set; }
+		public PointN? PivotOffset { get; set; }
 		/// <summary>
 		/// Image offset in dialog box.
 		/// </summary>
-		public RDPointN? PortraitOffset { get; set; }
+		public PointN? PortraitOffset { get; set; }
 		/// <summary>
 		/// Image clipping in the dialog box.
 		/// </summary>
-		public RDSizeNI? PortraitSize { get; set; }
+		public SizeNI? PortraitSize { get; set; }
 		/// <summary>
 		/// Image scale in the dialog box.
 		/// </summary>
@@ -268,11 +268,11 @@ namespace RhythmBase.RhythmDoctor.Assets
 			/// <summary>
 			/// Pivot point offset.
 			/// </summary>
-			public RDPointN? PivotOffset { get; set; }
+			public PointN? PivotOffset { get; set; }
 			/// <summary>
 			/// Image offset in dialog box.
 			/// </summary>
-			public RDPointN? PortraitOffset { get; set; }
+			public PointN? PortraitOffset { get; set; }
 			/// <summary>
 			/// Image scale in the dialog box.
 			/// </summary>
@@ -280,7 +280,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 			/// <summary>
 			/// Image clipping in the dialog box.
 			/// </summary>
-			public RDSizeNI? PortraitSize { get; set; }
+			public SizeNI? PortraitSize { get; set; }
 			public override string ToString() => Name;
 		}
 	}
