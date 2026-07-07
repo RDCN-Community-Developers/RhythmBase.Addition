@@ -32,7 +32,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 			if (infos.TryGetValue(word, out _))
 				return this;
 			var rect = spriteSheetCanvas.DrawText(word, font, out var pos, out var width);
-			TextInfo newInfo = new(word, pos.ToRDPoint(), rect.ToRect(), width, default);
+			TextInfo newInfo = new(word, pos.ToPointNI(), rect.ToRectN(), width, default);
 			infos[word] = newInfo;
 			return this;
 		}
@@ -53,15 +53,17 @@ namespace RhythmBase.RhythmDoctor.Utils
 		/// <summary>
 		/// 构建 Sprite Sheet 并创建各 Page 的子池。
 		/// </summary>
-		public RDSprite[] PrepareSprites(Level level, int maxPoolSize = 1000)
+		public Sprite[] PrepareSprites(Level level, int maxPoolSize = 1000)
 		{
 			this.level = level;
-			builtBook = spriteSheetCanvas.Build(out RDSprite[] result);
-			foreach (var s in result)
+			builtBook = spriteSheetCanvas.Build(out Sprite[] result);
+			for (int i = 0; i < result.Length; i++)
 			{
+				Sprite? s = result[i];
+				s.Name = $"{filename}-{i}";
 				foreach (var clip in s.Clips)
-					clip.Loop = LoopOption.onTickTime;
-				s.AddBlankExpressionForDecoration();
+					clip.Loop = LoopOption.OnBeat;
+				s.AddBlankExpressionForDecoration(0);
 			}
 			foreach (var (word, info) in infos)
 			{
@@ -70,7 +72,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 				if (page is PageIndex notnull)
 					infos[word] = info with
 					{
-						Size = builtBook.PageInfos[notnull.Page].cardSize.ToRDSize()
+						Size = builtBook.PageInfos[notnull.Page].cardSize.ToSizeN()
 					};
 			}
 			pagePools = new DecorationPool<string, string>[builtBook.PageCount];

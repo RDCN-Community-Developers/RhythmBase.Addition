@@ -1,4 +1,5 @@
-﻿using RhythmBase.Global.Components.Vector;
+﻿using RhythmBase.Global.Components;
+using RhythmBase.Global.Components.Vector;
 using SkiaSharp;
 using System.Numerics;
 using System.Text;
@@ -32,6 +33,7 @@ public static class Extensions
 		}
 		return sb.ToString();
 	}
+	public static CircularList<T> ToCircularList<T>(this IEnumerable<T> values) => new CircularList<T>(values);
 	public static SKPointI ToSKPointI(this PointNI p) => new(p.X, p.Y);
 	public static SKPoint ToSKPointI(this PointN p) => new(p.X, p.Y);
 	public static SKSizeI ToSKSizeI(this SizeNI p) => new(p.Width, p.Height);

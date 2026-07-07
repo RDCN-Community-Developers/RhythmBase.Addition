@@ -2,6 +2,7 @@
 using RhythmBase.Global.Components.Vector;
 using RhythmBase.Global.Extensions;
 using RhythmBase.RhythmDoctor.Assets.FlexibleSprite;
+using RhythmBase.RhythmDoctor.Extensions;
 using SkiaSharp;
 
 namespace RhythmBase.RhythmDoctor.Assets
@@ -93,12 +94,12 @@ namespace RhythmBase.RhythmDoctor.Assets
 			using (SKCanvas _baseCanvas = new(_base))
 			{
 				_baseCanvas.DrawText(text, off, font, DefaultEffect);
-#if DEBUG
-				_baseCanvas.DrawRect(rect, new() { Style = SKPaintStyle.Stroke, Color = SKColors.Red, StrokeWidth = 1 });
-				_baseCanvas.DrawLine(rect.Right, rect.Top, off.X, off.Y, new() { Color = SKColors.Green, StrokeWidth = 1 });
-				_baseCanvas.DrawLine(rect.Right, rect.Bottom, off.X, off.Y, new() { Color = SKColors.Green, StrokeWidth = 1 });
-				_baseCanvas.DrawLine(off.X, off.Y, off.X + width, off.Y, new() { Color = SKColors.Blue, StrokeWidth = 1 });
-#endif
+//#if DEBUG
+//				_baseCanvas.DrawRect(rect, new() { Style = SKPaintStyle.Stroke, Color = SKColors.Red, StrokeWidth = 1 });
+//				_baseCanvas.DrawLine(rect.Right, rect.Top, off.X, off.Y, new() { Color = SKColors.Green, StrokeWidth = 1 });
+//				_baseCanvas.DrawLine(rect.Right, rect.Bottom, off.X, off.Y, new() { Color = SKColors.Green, StrokeWidth = 1 });
+//				_baseCanvas.DrawLine(off.X, off.Y, off.X + width, off.Y, new() { Color = SKColors.Blue, StrokeWidth = 1 });
+//#endif
 			}
 			using (SKCanvas _glowCanvas = new(_glow))
 			{
@@ -146,7 +147,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 				minCardGrid = new(0, 0);
 				return true;
 			}
-			GridCoordinate maxStruct = RowColumnSize(AddMargin(maxTextSize, Margin.ToSKRect()));
+			GridCoordinate maxStruct = RowColumnSize(AddMargin(maxTextSize, Margin.ToSKRectNI()));
 			bool can = frameToDraw.Count + (more ? 1 : 0) <= maxStruct.Count;
 			switch (direction)
 			{
@@ -209,7 +210,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 							0, 0, 0, 1, 255
 						]
 						)));
-			SKSizeI cardSize = AddMargin(contentSize.Size, Margin.ToSKRect());
+			SKSizeI cardSize = AddMargin(contentSize.Size, Margin.ToSKRectNI());
 			SKBitmap bitmap = new(imageStruct.ColumnCount * cardSize.Width, imageStruct.RowCount * cardSize.Height);
 			SKBitmap bitmapGlow = new(imageStruct.ColumnCount * cardSize.Width, imageStruct.RowCount * cardSize.Height);
 			SKBitmap bitmapOutline = new(imageStruct.ColumnCount * cardSize.Width, imageStruct.RowCount * cardSize.Height);
@@ -232,9 +233,9 @@ namespace RhythmBase.RhythmDoctor.Assets
 						curIndex % imageStruct.RowCount * cardSize.Height),
 					_ => throw new NotImplementedException(),
 				});
-#if DEBUG
-				canvas.DrawRect(bound, new() { Style = SKPaintStyle.Fill, Color = SKColors.White.WithAlpha(10), StrokeWidth = 1 });
-#endif
+//#if DEBUG
+//				canvas.DrawRect(bound, new() { Style = SKPaintStyle.Fill, Color = SKColors.White.WithAlpha(10), StrokeWidth = 1 });
+//#endif
 				bound.Size = frameToDraw[0].Size;
 				canvas.DrawBitmap(frameToDraw[0].Base, bound, null);
 				if (frameToDraw[0].Glow is null)
@@ -265,21 +266,21 @@ namespace RhythmBase.RhythmDoctor.Assets
 			book.PageCount++;
 			curPage++;
 		}
-		public SpriteSheetBook Build(out RDSprite[] sprites)
+		public SpriteSheetBook Build(out Sprite[] sprites)
 		{
 			bool canHold = CanFit(currentMaxRect.Size, out GridCoordinate s);
 			if (!canHold)
 				throw new NotSupportedException($"Image size too big.");
 			Flush(s, currentMaxRect);
-			List<RDSprite> _sprites = [];
+			List<Sprite> _sprites = [];
 			foreach (var page in book.PageInfos)
 			{
-				RDSprite sprite = new()
+				Sprite sprite = new()
 				{
 					ImageBase = page.image,
 					ImageGlow = page.imageGlow,
 					ImageOutline = page.imageOutline,
-					Size = page.cardSize.ToRDSize(),
+					Size = page.cardSize.ToSizeN(),
 				};
 				PageIndex[] frames = [.. book.CardIndice.Where(j => j.Page == book.PageInfos.IndexOf(page))];
 				for (int i = 0; i < frames.Length; i++)
@@ -288,7 +289,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 					if (string.IsNullOrEmpty(frame.Name))
 						frame.Name = $"{frame.ImageIndex}";
 					frames[i] = frame;
-					sprite.Clips.Add(new RDSprite.Expression()
+					sprite.Clips.Add(new Sprite.Expression()
 					{
 						Name = frame.Name,
 						Frames = [frame.FrameIndex],

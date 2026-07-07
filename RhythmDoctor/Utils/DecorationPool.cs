@@ -16,7 +16,9 @@ public class DecorationPool<TReadOnlyState, TWritableState>
 	protected Level level;
 	protected readonly string filename;
 
-	public DecorationPool(Level level, string filename,
+	public DecorationPool(
+		Level level,
+		string filename,
 		int maxPoolSize = 1000)
 		: base(maxPoolSize)
 	{

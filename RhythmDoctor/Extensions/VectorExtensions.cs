@@ -253,9 +253,9 @@ public static partial class Extensions
 	private static Dictionary<Row, SizeNI> _rowSizeCache = [];
 	extension(Decoration e)
 	{
-		public RDSprite? Sprite
+		public Sprite? Sprite
 		{
-			get => Level.Default.AssetManager.GetFile<RDSprite>(e.Character.StringName ?? "");
+			get => Level.Default.AssetManager.GetFile<Sprite>(e.Character.StringName ?? "");
 		}
 		public SizeNI Size
 		{
@@ -269,9 +269,9 @@ public static partial class Extensions
 	}
 	extension(Row e)
 	{
-		public RDSprite? Sprite
+		public Sprite? Sprite
 		{
-			get => Level.Default.AssetManager.GetFile<RDSprite>(e.Character.StringName ?? "");
+			get => Level.Default.AssetManager.GetFile<Sprite>(e.Character.StringName ?? "");
 		}
 		public SizeNI Size
 		{

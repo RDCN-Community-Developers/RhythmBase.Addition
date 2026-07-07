@@ -19,5 +19,8 @@
 				base[actualIndex] = value;
 			}
 		}
+		public CircularList() : base() { }
+		public CircularList(int capacity) : base(capacity) { }
+		public CircularList(IEnumerable<T> values) : base(values) { }
 	}
 }

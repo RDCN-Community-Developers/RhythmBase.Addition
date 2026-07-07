@@ -1,9 +1,10 @@
 ﻿namespace RhythmBase.RhythmDoctor.Assets
 {
+	[JsonEnumSerializable]
 	public enum LoopOption
 	{
-		no,
-		yes,
-		onTickTime
+		No,
+		Yes,
+		OnBeat
 	}
 }

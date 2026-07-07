@@ -11,7 +11,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 		private readonly Dictionary<char, SKPoint> positions = [];
 		private readonly Dictionary<char, int> pages = [];
 		private readonly string filename;
-		public RDSprite[] Sprites { get; }
+		public Sprite[] Sprites { get; }
 		public string SpriteNameOf(char c) => pages.TryGetValue(c, out int value) ? $"{Path.GetFileNameWithoutExtension(filename)}_{value}" : string.Empty;
 		public PointN[] GetPositions(string text, float scale = 1f)
 		{
@@ -33,18 +33,18 @@ namespace RhythmBase.RhythmDoctor.Utils
 		public SpriteTextBuilder(SKFont font, string filename, string charCollection, SpriteSheetCanvasSettings settings)
 		{
 			this.filename = filename;
-			RDSprite[] sprites = BuildCharsSprite(charCollection, font, settings);
+			Sprite[] sprites = BuildCharsSprite(charCollection, font, settings);
 
 			Sprites = sprites;
 
 			for (int i = 0; i < sprites.Length; i++)
 			{
-				RDSprite sprite = sprites[i];
+				Sprite sprite = sprites[i];
 				sprite.Name = filename;
 				sprite.Save(filename + "_" + i);
 			}
 		}
-		private RDSprite[] BuildCharsSprite(string text, SKFont font, SpriteSheetCanvasSettings settings)
+		private Sprite[] BuildCharsSprite(string text, SKFont font, SpriteSheetCanvasSettings settings)
 		{
 			SpriteSheetCanvas canvas = new(settings);
 			char[] chars = [.. text.ToCharArray().Distinct()];
@@ -55,7 +55,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 				widths[c] = width;
 				positions[c] = pos;
 			}
-			SpriteSheetBook book = canvas.Build(out RDSprite[] sprites);
+			SpriteSheetBook book = canvas.Build(out Sprite[] sprites);
 			for (int i = 0; i < chars.Length; i++)
 			{
 				PageIndex index = book.CardIndice.Single(j => j.ImageIndex == i);
@@ -67,7 +67,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 			}
 			for (int i = 0; i < sprites.Length; i++)
 			{
-				RDSprite sprite = sprites[i];
+				Sprite sprite = sprites[i];
 				sprite.Clips.Add(new()
 				{
 					Name = "neutral",

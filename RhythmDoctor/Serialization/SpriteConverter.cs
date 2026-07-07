@@ -1,21 +1,22 @@
 ﻿using RhythmBase.Global.Components.Vector;
 using RhythmBase.Global.Extensions;
+using RhythmBase.Global.Serialization;
 using RhythmBase.Global.Settings;
 using RhythmBase.RhythmDoctor.Assets;
-using System.Text;
+using RhythmBase.RhythmDoctor.Extensions;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace RhythmBase.RhythmDoctor.Serialization
 {
-	internal class SpriteConverter : JsonConverter<RDSprite>
+	internal class SpriteConverter : MetadataJsonConverter<Sprite>
 	{
 		public SpriteReadOrWriteSettings Settings { get; init; } = new();
-		public override RDSprite? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+		public override Sprite? Read(ref Utf8JsonReader reader, Type typeToConvert, MetadataJsonSerializerOptions options)
 		{
 			if (reader.TokenType != JsonTokenType.StartObject)
 				throw new JsonException();
-			RDSprite sprite = new();
+			Sprite sprite = new();
 			while (reader.Read())
 			{
 				if (reader.TokenType == JsonTokenType.EndObject)
@@ -67,7 +68,7 @@ namespace RhythmBase.RhythmDoctor.Serialization
 								break;
 							if (reader.TokenType != JsonTokenType.StartObject)
 								throw new JsonException();
-							var clip = new RDSprite.Expression() { Name = "" };
+							var clip = new Sprite.Expression() { Name = "" };
 							while (reader.Read())
 							{
 								if (reader.TokenType == JsonTokenType.EndObject)
@@ -97,7 +98,10 @@ namespace RhythmBase.RhythmDoctor.Serialization
 										}
 										break;
 									case "loop":
-										clip.Loop = Enum.Parse<LoopOption>(reader.GetString()!);
+										string? v1 = reader.GetString();
+										if (string.IsNullOrEmpty(v1)) break;
+										v1 = v1.ToUpperCamelCase();
+										clip.Loop = Enum.TryParse(v1, out LoopOption v2) ? v2 : default;
 										break;
 									case "loopStart":
 										clip.LoopStart = reader.GetInt32();
@@ -136,7 +140,7 @@ namespace RhythmBase.RhythmDoctor.Serialization
 			}
 			throw new JsonException();
 		}
-		public override void Write(Utf8JsonWriter writer, RDSprite value, JsonSerializerOptions options)
+		public override void Write(Utf8JsonWriter writer, Sprite value, MetadataJsonSerializerOptions options)
 		{
 			writer.WriteStartObject();
 			if (!string.IsNullOrEmpty(value.DisplayName))
@@ -158,88 +162,52 @@ namespace RhythmBase.RhythmDoctor.Serialization
 				WritePair(writer, "portraitSize", s1.Width, s1.Height);
 			if (value.PortraitScale is float sc1)
 				writer.WriteNumber("portraitScale", sc1);
-			Dictionary<string, int> propertyNameLength = [];
-			Dictionary<string, string[]> propertyStringValue = [];
-			RDSprite.Expression[] array = [.. value.Clips];
-			for (int i = 0; i < array.Length; i++)
-			{
-				RDSprite.Expression? clip = array[i];
-				string name = Settings.UppercasePrefixCharInExpressionNames ? clip.Name.WithUppercasePrefix() : clip.Name;
-				propertyNameLength["name"] = int.Max(propertyNameLength.GetValueOrDefault("name", 0), name.Length + 2);
-				if (!propertyStringValue.TryGetValue("name", out var arr1))
-					propertyStringValue["name"] = arr1 = new string[array.Length];
-				arr1[i] = $"\"{name}\"";
-				propertyNameLength["frames"] = int.Max(propertyNameLength.GetValueOrDefault("frames", 0), clip.Frames.Sum(i => i.ToString().Length) + clip.Frames.Count + 1);
-				if (!propertyStringValue.TryGetValue("frames", out var arr2))
-					propertyStringValue["frames"] = arr2 = new string[array.Length];
-				arr2[i] = $"[{string.Join(',', clip.Frames)}]";
-				propertyNameLength["loop"] = int.Max(propertyNameLength.GetValueOrDefault("loop", 0), clip.Loop.ToString().Length + 2);
-				if (!propertyStringValue.TryGetValue("loop", out var arr3))
-					propertyStringValue["loop"] = arr3 = new string[array.Length];
-				arr3[i] = $"\"{clip.Loop.ToString()}\"";
-				if (clip.LoopStart is int l)
+			writer.WritePropertyName("clips");
+			writer.WriteStartArray();
+			using (NoIndentScope noIndentScope = new(options.JsonSerializerOptions.Encoder, options))
+				noIndentScope.WriteNoIndentArrayTo(options, writer, value.Clips, (writer, clip, _) =>
 				{
-					propertyNameLength["loopStart"] = int.Max(propertyNameLength.GetValueOrDefault("loopStart", 0), l.ToString().Length);
-					if (!propertyStringValue.TryGetValue("loopStart", out var arr4))
-						propertyStringValue["loopStart"] = arr4 = new string[array.Length];
-					arr4[i] = l.ToString();
-				}
-				propertyNameLength["fps"] = int.Max(propertyNameLength.GetValueOrDefault("fps", 0), clip.Fps.ToString().Length);
-				if (!propertyStringValue.TryGetValue("fps", out var arr5))
-					propertyStringValue["fps"] = arr5 = new string[array.Length];
-				arr5[i] = clip.Fps.ToString();
-				if (!propertyStringValue.TryGetValue("reflectionOffset", out var arr6))
-					propertyStringValue["reflectionOffset"] = arr6 = new string[array.Length];
-				arr6[i] = clip.ReflectionOffset.ToString();
-				if (clip.PivotOffset is PointN p4)
-				{
-					propertyNameLength["pivotOffset"] = int.Max(propertyNameLength.GetValueOrDefault("pivotOffset", -1), p4.ToString().Length + 3);
-					if (!propertyStringValue.TryGetValue("pivotOffset", out var arr7))
-						propertyStringValue["pivotOffset"] = arr7 = new string[array.Length];
-					arr7[i] = $"[{p4.X},{p4.Y}]";
-				}
-				if (clip.PortraitOffset is PointN p5)
-				{
-					propertyNameLength["portraitOffset"] = int.Max(propertyNameLength.GetValueOrDefault("portraitOffset", -1), p5.ToString().Length + 3);
-					if (!propertyStringValue.TryGetValue("portraitOffset", out var arr8))
-						propertyStringValue["portraitOffset"] = arr8 = new string[array.Length];
-					arr8[i] = $"[{p5.X},{p5.Y}]";
-				}
-				if (clip.PortraitScale is float sc2)
-				{
-					propertyNameLength["portraitScale"] = int.Max(propertyNameLength.GetValueOrDefault("portraitScale", -1), sc2.ToString().Length);
-					if (!propertyStringValue.TryGetValue("portraitScale", out var arr9))
-						propertyStringValue["portraitScale"] = arr9 = new string[array.Length];
-					arr9[i] = sc2.ToString();
-				}
-				if (clip.PortraitSize is SizeNI s2)
-				{
-					propertyNameLength["portraitSize"] = int.Max(propertyNameLength.GetValueOrDefault("portraitSize", -1), s2.ToString().Length + 3);
-					if (!propertyStringValue.TryGetValue("portraitSize", out var arr10))
-						propertyStringValue["portraitSize"] = arr10 = new string[array.Length];
-					arr10[i] = $"[{s2.Width},{s2.Height}]";
-				}
-			}
-			writer.WriteStartArray("clips");
-			using MemoryStream stream = new();
-			using Utf8JsonWriter writer1 = new(stream);
-			string indent = new(options.IndentCharacter, writer.CurrentDepth * options.IndentSize);
-			for (int i = 0; i < array.Length; i++)
-			{
-				writer1.WriteStartObject();
-				foreach (var kvp in propertyStringValue)
-				{
-					if (!propertyNameLength.TryGetValue(kvp.Key, out int v) || v < 0)
-						continue;
-					writer1.WritePropertyName(kvp.Key);
-					writer1.WriteRawValue(kvp.Value[i] + new string(' ', propertyNameLength[kvp.Key] - kvp.Value[i].Length), false);
-				}
-				writer1.WriteEndObject();
-				writer1.Flush();
-				writer.WriteRawValue("\n" + indent + Encoding.UTF8.GetString(stream.ToArray()[..(int)stream.Position]), true);
-				stream.Position = 0;
-				writer1.Reset();
-			}
+					writer.WriteStartObject();
+					writer.WriteString("name", Settings.UppercasePrefixCharInExpressionNames
+						? clip.Name.WithUppercasePrefix() : clip.Name);
+					writer.WritePropertyName("frames");
+					writer.WriteStartArray();
+					foreach (int frame in clip.Frames)
+						writer.WriteNumberValue(frame);
+					writer.WriteEndArray();
+					writer.WriteString("loop", clip.Loop.ToString().ToLowerCamelCase());
+					if (clip.LoopStart is int l)
+						writer.WriteNumber("loopStart", l);
+					writer.WriteNumber("fps", clip.Fps);
+					writer.WriteNumber("reflectionOffset", clip.ReflectionOffset);
+					if (clip.PivotOffset is PointN p4)
+					{
+						writer.WritePropertyName("pivotOffset");
+						writer.WriteStartArray();
+						writer.WriteNumberValue(p4.X);
+						writer.WriteNumberValue(p4.Y);
+						writer.WriteEndArray();
+					}
+					if (clip.PortraitOffset is PointN p5)
+					{
+						writer.WritePropertyName("portraitOffset");
+						writer.WriteStartArray();
+						writer.WriteNumberValue(p5.X);
+						writer.WriteNumberValue(p5.Y);
+						writer.WriteEndArray();
+					}
+					if (clip.PortraitScale is float sc2)
+						writer.WriteNumber("portraitScale", sc2);
+					if (clip.PortraitSize is SizeNI s2)
+					{
+						writer.WritePropertyName("portraitSize");
+						writer.WriteStartArray();
+						writer.WriteNumberValue(s2.Width);
+						writer.WriteNumberValue(s2.Height);
+						writer.WriteEndArray();
+					}
+					writer.WriteEndObject();
+				});
 			writer.WriteEndArray();
 			writer.WriteEndObject();
 		}

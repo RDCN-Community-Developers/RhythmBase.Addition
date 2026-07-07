@@ -12,7 +12,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 	/// <summary>
 	/// A reference to an asset file.
 	/// </summary>
-	public class RDSprite : IAssetFile<RDSprite>
+	public class Sprite : IAssetFile<Sprite>
 	{
 		public string DisplayName => Path.GetFileName(FilePath);
 		/// <inheritdoc/>
@@ -85,14 +85,14 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// Image scale in the dialog box.
 		/// </summary>
 		public float? PortraitScale { get; set; }
-		public RDSprite()
+		public Sprite()
 		{
 		}
 		/// <summary>
 		/// Create a reference to the file. The contents of the file are not read.
 		/// </summary>
 		/// <param name="filename">File path.</param>
-		public RDSprite(string filename)
+		public Sprite(string filename)
 		{
 			if (string.IsNullOrEmpty(filename))
 			{
@@ -103,7 +103,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// <summary>
 		/// Load the file contents into memory.
 		/// </summary>
-		public static RDSprite? FromFile(string path)
+		public static Sprite? FromFile(string path)
 		{
 			string _file = Path.Combine(Path.GetDirectoryName(path) ?? "", Path.GetFileNameWithoutExtension(path));
 			bool flag = File.Exists($"{_file}.json");
@@ -121,7 +121,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 			using FileStream stream = File.OpenRead($"{json}.json");
 			return FromStream(stream, null);
 		}
-		public static RDSprite? FromStream(Stream stream, SpriteReadOrWriteSettings? settings = null)
+		public static Sprite? FromStream(Stream stream, SpriteReadOrWriteSettings? settings = null)
 		{
 			SpriteConverter converter = new();
 			byte[] buffer = new byte[stream.Length];
@@ -131,7 +131,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 				AllowTrailingCommas = true
 			});
 			reader.Read();
-			return converter.Read(ref reader, typeof(RDSprite), new());
+			return converter.Read(ref reader, typeof(Sprite), new() { JsonSerializerOptions = new() });
 		}
 		/// <summary>
 		/// Write JSON data to the text stream.
@@ -146,7 +146,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 				SkipValidation = true,
 				Indented = true,
 			});
-			converter.Write(writer, this, new());
+			converter.Write(writer, this, new() { JsonSerializerOptions = new() });
 			writer.Flush();
 		}
 		/// <summary>
@@ -160,7 +160,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 			{
 				throw new OverflowException();
 			}
-			return GetFrameRect(checked((uint)index), ImageSize.ToSKSize(), Size.ToSKSize());
+			return GetFrameRect(checked((uint)index), ImageSize.ToSKSizeI(), Size.ToSKSizeI());
 		}
 		private static SKRectI GetFrameRect(uint index, SKSizeI source, SKSizeI size)
 		{
@@ -184,11 +184,12 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// </summary>
 		/// <param name="name">Expression name.</param>
 		/// <returns>Added expression. Further changes can be made on top of this.</returns>
-		public Expression AddBlankExpression(string name)
+		public Expression AddBlankExpression(string name, params int[] indices)
 		{
 			Expression C = Clips.FirstOrDefault(i => i.Name == name, new Expression
 			{
-				Name = name
+				Name = name,
+				Frames = indices.ToCircularList(),
 			});
 			Clips.Add(C);
 			return C;
@@ -197,12 +198,12 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// Add a blank emoticon to the creation of character assets.
 		/// </summary>
 		/// <returns>Added expressions. Further changes can be made on top of these.</returns>
-		public IEnumerable<Expression> AddBlankExpressionsForCharacter() => from n in characterExpressionNames select AddBlankExpression(n);
+		public IEnumerable<Expression> AddBlankExpressionsForCharacter(params int[] indices) => from n in characterExpressionNames select AddBlankExpression(n, indices);
 		/// <summary>
 		/// Add a blank emoticon to the creation of sprite assets.
 		/// </summary>
 		/// <returns>Added expression. Further changes can be made on top of this.</returns>
-		public IEnumerable<Expression> AddBlankExpressionForDecoration() => [AddBlankExpression("neutral")];
+		public IEnumerable<Expression> AddBlankExpressionForDecoration(params int[] indices) => [AddBlankExpression("neutral", indices)];
 		/// <summary>
 		/// Save the file.
 		/// </summary>

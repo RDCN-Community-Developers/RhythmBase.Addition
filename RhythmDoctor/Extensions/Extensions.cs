@@ -30,14 +30,14 @@ public static partial class Extensions
 		string ch = decoration.Character.StringName ?? "";
 		if (string.IsNullOrWhiteSpace(ch))
 			return null;
-		return (IAssetFile?)manager.GetFile<RDSprite>(ch) ?? manager.GetFile<RDImage>(ch);
+		return (IAssetFile?)manager.GetFile<Sprite>(ch) ?? manager.GetFile<RDImage>(ch);
 	}
 	public static IAssetFile? GetAsset(this Row row, RDAssetManager manager)
 	{
 		string? ch = row.Character.StringName;
 		if (string.IsNullOrWhiteSpace(ch))
 			return null;
-		return (IAssetFile?)manager.GetFile<RDSprite>(ch) ?? manager.GetFile<RDImage>(ch);
+		return (IAssetFile?)manager.GetFile<Sprite>(ch) ?? manager.GetFile<RDImage>(ch);
 	}
 	public static IAssetFile? GetAsset(this Audio audio, RDAssetManager manager)
 	{
