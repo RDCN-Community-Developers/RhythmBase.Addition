@@ -1,5 +1,6 @@
 ﻿using RhythmBase.Global.Components.Vector;
 using RhythmBase.Global.Extensions;
+using RhythmBase.Global.Utils;
 using RhythmBase.RhythmDoctor.Assets;
 using RhythmBase.RhythmDoctor.Assets.FlexibleSprite;
 using RhythmBase.RhythmDoctor.Components;
@@ -13,15 +14,19 @@ namespace RhythmBase.RhythmDoctor.Utils
 	{
 		public readonly PointN DecorationPivot => Position.ToPercentagePoint(Size);
 	}
-	public class TextFontManager
+
+	/// <summary>
+	/// 文字字体管理器。继承 DecorationPool 统一 API。
+	/// 内部按 Sprite Page 拆分为多个子池。
+	/// </summary>
+	public class TextFontManager : DecorationPool<string, string>
 	{
 		private readonly Dictionary<string, TextInfo> infos = [];
-		private readonly string filename;
 		private readonly SKFont font;
 		private readonly SpriteSheetCanvas spriteSheetCanvas;
-		private bool isBuilt = false;
 		private SpriteSheetBook? builtBook = null;
-		private DecorationPool<string>[] pools = [];
+		private DecorationPool<string, string>[] pagePools = [];
+
 		public TextFontManager AddWord(string word)
 		{
 			if (infos.TryGetValue(word, out _))
@@ -37,50 +42,107 @@ namespace RhythmBase.RhythmDoctor.Utils
 				AddWord(word);
 			return this;
 		}
+
 		public TextFontManager(SKFont font, string filename, SpriteSheetCanvasSettings settings)
+			: base(null!, filename)
 		{
 			this.font = font;
-			this.filename = filename;
 			spriteSheetCanvas = new SpriteSheetCanvas(settings);
 		}
-		public void Build(Level level, out RDSprite[] sprites, int maxPoolSize = 1000)
+
+		/// <summary>
+		/// 构建 Sprite Sheet 并创建各 Page 的子池。
+		/// </summary>
+		public RDSprite[] PrepareSprites(Level level, int maxPoolSize = 1000)
 		{
+			this.level = level;
 			builtBook = spriteSheetCanvas.Build(out RDSprite[] result);
-			sprites = [.. result.Select((s, i)=>
+			foreach (var s in result)
+			{
+				foreach (var clip in s.Clips)
+					clip.Loop = LoopOption.onTickTime;
+				s.AddBlankExpressionForDecoration();
+			}
+			foreach (var (word, info) in infos)
+			{
+				PageIndex? page = builtBook.CardIndice?
+					.FirstOrDefault(i => i.Name == word);
+				if (page is PageIndex notnull)
+					infos[word] = info with
+					{
+						Size = builtBook.PageInfos[notnull.Page].cardSize.ToRDSize()
+					};
+			}
+			pagePools = new DecorationPool<string, string>[builtBook.PageCount];
+			for (int i = 0; i < pagePools.Length; i++)
+			{
+				pagePools[i] = new DecorationPool<string, string>(
+					level, $"{filename}-{i}",
+					maxPoolSize);
+				pagePools[i].OnStateChanged = (deco, key, beat) =>
 				{
-					s.Name = $"{filename}-{i}";
-					foreach(var clip in s.Clips)
-						clip.Loop = LoopOption.onTickTime;
-					s.AddBlankExpressionForDecoration();
-					return s;
-				})];
-			pools = new DecorationPool<string>[builtBook.PageCount];
-			for (int i = 0; i < pools.Length; i++)
-				pools[i] = new DecorationPool<string>(level, $"{filename}-{i}", (deco, oldKey, newKey, beat) => {
 					deco.Add(new PlayAnimation()
 					{
 						TickTime = new(beat),
-						Expression = newKey.WithUppercasePrefix(),
+						Expression = key.WithUppercasePrefix(),
 					});
-				}, maxPoolSize);
-			isBuilt = true;
+				};
+			}
+			return result;
 		}
-		public (Decoration, TextInfo) Allocate(float start, float end, string word)
+
+		/// <summary>
+		/// 记录分配意图，路由到正确的 Page 子池。
+		/// readOnlyState 和 writableState 均传入 word 即可。
+		/// </summary>
+		public override Fragment Allocate(float start, float end,
+			string readOnlyState, string writableState,
+			CreateResource? onCreateResource = null,
+			StateChanged? onStateChanged = null,
+			Action<Fragment>? onBuild = null)
 		{
-			if (!isBuilt)
-				throw new InvalidOperationException("You must call Build() before Allocate().");
-			PageIndex? page = builtBook?.CardIndice?
-				.First(i => i.Name == word);
+			if (builtBook is null)
+				throw new InvalidOperationException(
+					"You must call PrepareSprites() before Allocate().");
+			PageIndex? page = builtBook.CardIndice?
+				.First(i => i.Name == writableState);
 			if (page is PageIndex notnull)
-				return (
-					pools[notnull.Page].Allocate(start, end, word),
-					infos[word] with
-					{
-						Size =
-							builtBook!.PageInfos[notnull.Page].cardSize.ToRDSize()
-					});
-			throw new Exception($"The word '{word}' is not found in the built book." +
-					$" Did you forget to add it using AddWord() or AddWords() before calling Build()?");
+				return pagePools[notnull.Page].Allocate(
+					start, end, readOnlyState, writableState,
+					onCreateResource, onStateChanged, onBuild);
+			throw new Exception(
+				$"The word '{writableState}' is not found in the built book." +
+				$" Did you forget to add it using AddWord() or AddWords() before calling PrepareSprites()?");
 		}
+
+		/// <summary>
+		/// 构建所有 Page 子池，返回聚合结果。
+		/// </summary>
+		public override BuildResult Build()
+		{
+			if (built)
+				throw new InvalidOperationException("Build() has already been called.");
+			built = true;
+
+			var allAllocations = new List<Allocation>();
+			foreach (var pool in pagePools)
+			{
+				var result = pool.Build();
+				foreach (var alloc in result.Allocations)
+					allAllocations.Add(alloc);
+			}
+			return new BuildResult(allAllocations.AsReadOnly());
+		}
+
+		/// <summary>
+		/// 便捷 Allocate：仅传入 word，同时作为 readOnlyState 和 writableState。
+		/// </summary>
+		public Fragment Allocate(float start, float end, string word)
+			=> Allocate(start, end, word, word);
+
+		/// <summary>
+		/// 获取已注册文字的排版信息。
+		/// </summary>
+		public TextInfo GetTextInfo(string word) => infos[word];
 	}
 }

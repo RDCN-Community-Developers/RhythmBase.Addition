@@ -4,79 +4,78 @@ using RhythmBase.RhythmDoctor.Events;
 
 namespace RhythmBase.RhythmDoctor.Utils;
 
-public class DecorationPool<TKey> : IDisposable
-	where TKey : IEquatable<TKey>
+/// <summary>
+/// 装饰池。TReadOnlyState 为文件引用等不可变状态，
+/// TWritableState 为动画 Key 等可写状态。
+/// </summary>
+public class DecorationPool<TReadOnlyState, TWritableState>
+	: AllocationPool<TReadOnlyState, TWritableState, Decoration>, IDisposable
+	where TReadOnlyState : IEquatable<TReadOnlyState>
+	where TWritableState : IEquatable<TWritableState>
 {
-	private readonly Level level;
-	private readonly string filename;
-	private readonly AllocationPool<TKey, Decoration> allocationPool;
-	private readonly List<AllocationPool<TKey, Decoration>.Action> actions = [];
+	protected Level level;
+	protected readonly string filename;
+
 	public DecorationPool(Level level, string filename,
-		Action<Decoration, TKey, TKey, float>? onStateChanged = null,
 		int maxPoolSize = 1000)
+		: base(maxPoolSize)
 	{
 		this.level = level;
 		this.filename = filename;
-		allocationPool = new(maxPoolSize)
-		{
-			OnCreateResource = (key) =>
-			{
-				Decoration deco = new Decoration()
-				{
-					Character = filename,
-				};
-				return deco;
-			},
-			OnStateChanged = (deco, oldKey, newKey, time) =>
-			{
-				onStateChanged?.Invoke(deco, oldKey, newKey, time); ;
-			},
-		};
+		OnCreateResource = static (state) => new Decoration();
 	}
 
-	private void Flush()
+	public override BuildResult Build()
 	{
-		allocationPool.Allocate(actions);
+		var result = base.Build();
 
-		foreach (var pool in allocationPool.Allocations)
+		foreach (var allocation in result.Allocations)
 		{
-			Decoration deco = new() { Character = filename };
+			Decoration deco = allocation.Resource;
+			deco.Character = filename;
 			level.Decorations.Add(deco);
 
-			var sortedRanges = pool.OrderBy(a => a.Start).ToArray();
-			for (int i = 0; i < sortedRanges.Length; i++)
+			var sortedFragments = allocation.SortedFragments.ToList();
+			for (int i = 0; i < sortedFragments.Count; i++)
 			{
-				var v = sortedRanges[i];
+				var v = sortedFragments[i];
 				if (i == 0)
-					deco.Add(new SetVisible() { TickTime = new(level.Calculator, v.Start), Visible = true });
-				else
-				{
-					if (sortedRanges[i - 1].End < v.Start)
+					deco.Add(new SetVisible
 					{
-						deco.Add(new SetVisible() { TickTime = new(level.Calculator, sortedRanges[i - 1].End), Visible = false });
-						deco.Add(new SetVisible() { TickTime = new(level.Calculator, v.Start), Visible = true });
-					}
-					if (i == sortedRanges.Length - 1 && v.End < float.MaxValue)
-						deco.Add(new SetVisible() { TickTime = new(level.Calculator, v.End), Visible = false });
+						TickTime = new(level.Calculator, v.Start),
+						Visible = true
+					});
+				else if (sortedFragments[i - 1].End < v.Start)
+				{
+					deco.Add(new SetVisible
+					{
+						TickTime = new(level.Calculator, sortedFragments[i - 1].End),
+						Visible = false
+					});
+					deco.Add(new SetVisible
+					{
+						TickTime = new(level.Calculator, v.Start),
+						Visible = true
+					});
 				}
 			}
+			if (sortedFragments.Count > 0
+				&& sortedFragments[^1].End < float.MaxValue)
+			{
+				deco.Add(new SetVisible
+				{
+					TickTime = new(level.Calculator, sortedFragments[^1].End),
+					Visible = false
+				});
+			}
 		}
+
+		return result;
 	}
+
 	public void Dispose()
 	{
-		Flush();
+		Build();
 		GC.SuppressFinalize(this);
-	}
-	public Decoration Allocate(float startTickTime, float endTickTime, TKey target, int? y = null, SingleRoom? room = null)
-	{
-		AllocationPool<TKey, Decoration>.Action action = new(startTickTime, endTickTime, target);
-		actions.Add(action);
-		var deco = allocationPool.Allocate([action])[0];
-		level.Decorations.Add(deco);
-		deco.Add(new SetVisible() { TickTime = new(level.Calculator, startTickTime), Visible = true });
-		if (endTickTime < float.MaxValue)
-			deco.Add(new SetVisible() { TickTime = new(level.Calculator, endTickTime), Visible = false });
-		return deco;
-
 	}
 }
