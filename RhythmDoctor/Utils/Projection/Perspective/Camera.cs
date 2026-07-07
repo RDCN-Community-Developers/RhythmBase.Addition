@@ -8,14 +8,14 @@ using System.Threading.Tasks;
 
 namespace RhythmBase.RhythmDoctor.Utils.Projection.Perspective;
 
-public readonly struct Matrix4x4
+public readonly struct ProjectionMatrix4x4
 {
     public readonly float M11, M12, M13, M14;
     public readonly float M21, M22, M23, M24;
     public readonly float M31, M32, M33, M34;
     public readonly float M41, M42, M43, M44;
 
-    public Matrix4x4(
+    public ProjectionMatrix4x4(
         float m11, float m12, float m13, float m14,
         float m21, float m22, float m23, float m24,
         float m31, float m32, float m33, float m34,
@@ -27,13 +27,13 @@ public readonly struct Matrix4x4
         M41 = m41; M42 = m42; M43 = m43; M44 = m44;
     }
 
-    public static Matrix4x4 LookAt(PointN3 eye, PointN3 target, PointN3 up)
+    public static ProjectionMatrix4x4 LookAt(PointN3 eye, PointN3 target, PointN3 up)
     {
-        var zAxis = (target - eye).Normalized();  // 前
-        var xAxis = PointN3.Cross(up, zAxis).Normalized(); // 右
-        var yAxis = PointN3.Cross(zAxis, xAxis); // 上
+        var zAxis = (target - eye).Normalized();
+        var xAxis = PointN3.Cross(up, zAxis).Normalized();
+        var yAxis = PointN3.Cross(zAxis, xAxis);
 
-        return new Matrix4x4(
+        return new ProjectionMatrix4x4(
             xAxis.X, yAxis.X, zAxis.X, 0,
             xAxis.Y, yAxis.Y, zAxis.Y, 0,
             xAxis.Z, yAxis.Z, zAxis.Z, 0,
@@ -43,12 +43,20 @@ public readonly struct Matrix4x4
 
     public PointN3 Transform(PointN3 p)
     {
-        // 假设w=1，不处理透视除法（在投影阶段处理）
         return new PointN3(
             M11 * p.X + M12 * p.Y + M13 * p.Z + M14,
             M21 * p.X + M22 * p.Y + M23 * p.Z + M24,
             M31 * p.X + M32 * p.Y + M33 * p.Z + M34
         );
+    }
+
+    public (PointN3 point, float w) TransformProjective(PointN3 p)
+    {
+        float x = M11 * p.X + M12 * p.Y + M13 * p.Z + M14;
+        float y = M21 * p.X + M22 * p.Y + M23 * p.Z + M24;
+        float z = M31 * p.X + M32 * p.Y + M33 * p.Z + M34;
+        float w = M41 * p.X + M42 * p.Y + M43 * p.Z + M44;
+        return (new PointN3(x, y, z), w);
     }
 }
 public enum PerspectiveType
@@ -173,52 +181,36 @@ public class Camera
     // 可选：强制使用特定透视类型
     public PerspectiveType? ForcePerspective { get; set; }
 
-    // 缓存的视图矩阵（每次参数变化时重新计算）
-    private Matrix4x4? _cachedViewMatrix;
+    private ProjectionMatrix4x4? _cachedViewMatrix;
     private (PointN3 pos, float y, float p, float r) _cachedParams;
 
-    /// <summary>获取视图矩阵（世界空间→相机空间）</summary>
-    public Matrix4x4 GetViewMatrix()
+    /// <summary>获取视图矩阵（世界空间→相机空间，右手系，相机看向 -Z）</summary>
+    public ProjectionMatrix4x4 GetViewMatrix()
     {
         var currentParams = (Position, Yaw, Pitch, Roll);
         if (_cachedViewMatrix.HasValue && _cachedParams == currentParams)
             return _cachedViewMatrix.Value;
 
-        // 构建旋转矩阵（先计算相机朝向的基向量）
         var (sinY, cosY) = (MathF.Sin(Yaw * MathF.PI / 180), MathF.Cos(Yaw * MathF.PI / 180));
         var (sinP, cosP) = (MathF.Sin(Pitch * MathF.PI / 180), MathF.Cos(Pitch * MathF.PI / 180));
         var (sinR, cosR) = (MathF.Sin(Roll * MathF.PI / 180), MathF.Cos(Roll * MathF.PI / 180));
 
-        // 相机坐标系的基向量（相机看向 -Z 方向）
-        // 前向量（相机看向的方向）
-        PointN3 forward = new(
-            sinY * cosP,
-            sinP,
-            -cosY * cosP
-        );
-
-        // 右向量
-        PointN3 right = new(
-            cosY * cosR + sinY * sinP * sinR,
-            -cosP * sinR,
-            sinY * cosR - cosY * sinP * sinR
-        );
-
-        // 上向量
+        PointN3 forward = new(sinY * cosP, sinP, -cosY * cosP);
+        PointN3 right = new(cosY * cosR + sinY * sinP * sinR, -cosP * sinR, sinY * cosR - cosY * sinP * sinR);
         PointN3 up = PointN3.Cross(forward, right);
 
-        _cachedViewMatrix = Matrix4x4.LookAt(Position, Position + forward, up);
+        _cachedViewMatrix = ProjectionMatrix4x4.LookAt(Position, Position + forward, up);
         _cachedParams = currentParams;
         return _cachedViewMatrix.Value;
     }
 
-    /// <summary>获取投影矩阵（相机空间→裁剪空间）</summary>
-    public Matrix4x4 GetProjectionMatrix()
+    /// <summary>获取投影矩阵（相机空间→裁剪空间，右手系）</summary>
+    public ProjectionMatrix4x4 GetProjectionMatrix()
     {
         float fovRad = Fov * MathF.PI / 180;
         float f = 1f / MathF.Tan(fovRad / 2);
 
-        return new Matrix4x4(
+        return new ProjectionMatrix4x4(
             f / AspectRatio, 0, 0, 0,
             0, f, 0, 0,
             0, 0, (FarPlane + NearPlane) / (NearPlane - FarPlane),
@@ -246,40 +238,30 @@ public static class PerspectiveProjection
         1f - pixel.Y / PixelateHeight
     );
 
+    private static float FocalLength(float fovDeg) =>
+        1f / MathF.Tan(fovDeg * MathF.PI / 360f);
+
     /// <summary>
-    /// 标准透视投影（支持一点/两点/三点，由相机旋转自动决定）
+    /// 标准透视投影（右手系，相机看向 -Z，支持一点/两点/三点，由相机旋转自动决定）
     /// </summary>
     public static ProjectionResult StandardPerspective(PointN3 point, Camera camera)
     {
-        // 1. 世界坐标 → 相机坐标（视图变换）
         var viewMatrix = camera.GetViewMatrix();
         var cameraPoint = viewMatrix.Transform(point);
 
-        // 2. 相机坐标 → 裁剪坐标（投影变换）
-        // 简化透视除法：假设使用标准透视投影矩阵
+        float distance = cameraPoint.Length;
 
-        float distance = cameraPoint.Length; // 到相机的实际距离
+        if (cameraPoint.Z >= -camera.NearPlane)
+            return new(PixelCenter, distance, false);
 
-        // 如果点在相机后方（Z>0是前方，这里相机看向-Z，所以相机空间Z<0是前方）
-        // 注意：不同坐标系约定可能不同，这里假设相机空间Z<0是前方
-        bool inFront = cameraPoint.Z < -camera.NearPlane;
-
-        if (!inFront)
-            return new(PixelCenter, distance, false); // 返回中心点但标记为后方
-
-        // 透视除法：x' = x / -z, y' = y / -z （标准透视投影）
-        // 使用 -z 因为相机看向 -Z 方向，远处Z更负
-        float perspectiveScale = camera.Fov / 60f; // 归一化FOV影响
+        float f = FocalLength(camera.Fov);
         float invZ = -1f / cameraPoint.Z;
 
-        float screenX = cameraPoint.X * invZ * perspectiveScale;
-        float screenY = cameraPoint.Y * invZ * perspectiveScale;
+        float screenX = cameraPoint.X * invZ * f;
+        float screenY = cameraPoint.Y * invZ * f;
 
-        // 3. 裁剪空间 → 屏幕坐标（像素单位，左上0,0）
-        // 考虑画布16:9比例，需要将X进行修正
         float aspectCorrectedX = screenX / camera.AspectRatio;
 
-        // 映射到 0-1 范围再转像素
         float normalizedX = aspectCorrectedX * 0.5f + 0.5f;
         float normalizedY = screenY * 0.5f + 0.5f;
 
@@ -287,24 +269,22 @@ public static class PerspectiveProjection
     }
 
     /// <summary>
-    /// 强制一点透视（无视相机旋转，始终正对XY平面）
+    /// 强制一点透视（无视相机旋转，始终正对XY平面，右手系）
     /// </summary>
     public static ProjectionResult OnePoint(PointN3 point, Camera camera)
     {
-        // 相对相机位置
         float dx = point.X - camera.Position.X;
         float dy = point.Y - camera.Position.Y;
         float dz = point.Z - camera.Position.Z;
 
         float distance = MathF.Sqrt(dx * dx + dy * dy + dz * dz);
 
-        // 一点透视：Z轴深度决定缩放，XY直接映射
-        if (dz >= -camera.NearPlane) // 在相机后方或太近
+        if (dz >= -camera.NearPlane)
             return new(PixelCenter, distance, false);
 
-        float scale = -camera.Fov / (60f * dz); // FOV归一化后的缩放
+        float f = FocalLength(camera.Fov);
+        float scale = f / -dz;
 
-        // 直接映射XY，考虑画布比例
         float normalizedX = dx * scale / camera.AspectRatio + 0.5f;
         float normalizedY = dy * scale + 0.5f;
 
@@ -312,20 +292,17 @@ public static class PerspectiveProjection
     }
 
     /// <summary>
-    /// 强制两点透视（保持垂直线垂直，水平线汇聚于两个灭点）
+    /// 强制两点透视（保持垂直线垂直，水平线汇聚于两个灭点，右手系）
     /// </summary>
     public static ProjectionResult TwoPoint(PointN3 point, Camera camera)
     {
-        // 两点透视：绕Y轴旋转（Yaw）有效，Pitch和Roll强制为0
         var (sinY, cosY) = (MathF.Sin(camera.Yaw * MathF.PI / 180),
                            MathF.Cos(camera.Yaw * MathF.PI / 180));
 
-        // 相对位置
         float dx = point.X - camera.Position.X;
         float dy = point.Y - camera.Position.Y;
         float dz = point.Z - camera.Position.Z;
 
-        // 应用Yaw旋转（绕Y轴）
         float rotX = dx * cosY - dz * sinY;
         float rotZ = dx * sinY + dz * cosY;
 
@@ -334,11 +311,11 @@ public static class PerspectiveProjection
         if (rotZ >= -camera.NearPlane)
             return new(PixelCenter, distance, false);
 
-        float scale = -camera.Fov / (60f * rotZ);
+        float f = FocalLength(camera.Fov);
+        float scale = f / -rotZ;
 
-        // Y保持垂直（不旋转），X根据深度透视
         float normalizedX = rotX * scale / camera.AspectRatio + 0.5f;
-        float normalizedY = dy * scale + 0.5f; // Y直接映射，保持垂直
+        float normalizedY = dy * scale + 0.5f;
 
         return new(NormalizedToPixel(normalizedX, normalizedY), distance, true);
     }
@@ -354,75 +331,90 @@ public static class PerspectiveProjection
     }
 
     /// <summary>
-    /// 鱼眼效果投影（非线性投影，视野更广但有畸变）
+    /// 鱼眼效果投影（等距鱼眼模型 r' = f * θ）
     /// </summary>
     public static ProjectionResult FishEye(PointN3 point, Camera camera)
     {
-        // 先进行标准透视投影
         var standard = StandardPerspective(point, camera);
         if (!standard.InFront) return standard;
 
-        // 将像素坐标转换到 -1 到 1 范围
         var (nx, ny) = PixelToNormalized(standard.ScreenPoint);
         float x = (nx - 0.5f) * 2;
         float y = (ny - 0.5f) * 2;
 
-        // 计算极坐标
         float r = MathF.Sqrt(x * x + y * y);
+        if (r < 1e-6f) return standard;
         float theta = MathF.Atan2(y, x);
 
-        // 鱼眼畸变：r' = 2 * sin(r * π/2) / π （等距鱼眼）
-        // 或使用更强烈的 r' = r^0.5 （你原代码的效果）
-        float fishEyeR = MathF.Sqrt(r); // 你的原始效果
-
-        // 限制在合理范围内
+        float fishEyeR = MathF.Atan(r) / (MathF.PI / 2f);
         fishEyeR = MathF.Min(fishEyeR, 1.5f);
 
-        // 转换回笛卡尔坐标
         float newX = fishEyeR * MathF.Cos(theta);
         float newY = fishEyeR * MathF.Sin(theta);
 
-        // 映射回像素坐标
         return new(
             NormalizedToPixel(newX * 0.5f + 0.5f, newY * 0.5f + 0.5f),
             standard.Distance,
-            standard.InFront
+            true
         );
     }
 
     /// <summary>
-    /// 等轴透视（无透视效果，平行投影，用于对比参考）
+    /// 等立体角鱼眼投影（r' = 2 * sin(θ/2)）
+    /// </summary>
+    public static ProjectionResult FishEyeEquisolid(PointN3 point, Camera camera)
+    {
+        var standard = StandardPerspective(point, camera);
+        if (!standard.InFront) return standard;
+
+        var (nx, ny) = PixelToNormalized(standard.ScreenPoint);
+        float x = (nx - 0.5f) * 2;
+        float y = (ny - 0.5f) * 2;
+
+        float r = MathF.Sqrt(x * x + y * y);
+        if (r < 1e-6f) return standard;
+        float theta = MathF.Atan2(y, x);
+
+        float fishEyeR = 2f * MathF.Sin(MathF.Atan(r) / 2f);
+        fishEyeR = MathF.Min(fishEyeR, 1.5f);
+
+        float newX = fishEyeR * MathF.Cos(theta);
+        float newY = fishEyeR * MathF.Sin(theta);
+
+        return new(
+            NormalizedToPixel(newX * 0.5f + 0.5f, newY * 0.5f + 0.5f),
+            standard.Distance,
+            true
+        );
+    }
+
+    /// <summary>
+    /// 等轴透视（无透视效果，平行投影）
     /// </summary>
     public static ProjectionResult Isometric(PointN3 point, Camera camera)
     {
-        // 等轴透视：无视Z深度，所有物体同等大小
-        // 使用特定角度：约30度俯角，45度水平角
-
-        float angleX = 35.264f * MathF.PI / 180; // 垂直倾斜
-        float angleY = 45f * MathF.PI / 180;     // 水平旋转
+        float angleX = 35.264f * MathF.PI / 180;
+        float angleY = 45f * MathF.PI / 180;
 
         float dx = point.X - camera.Position.X;
         float dy = point.Y - camera.Position.Y;
         float dz = point.Z - camera.Position.Z;
 
-        // 等轴投影公式
         float isoX = (dx - dz) * MathF.Cos(angleY);
         float isoY = dy + (dx + dz) * MathF.Sin(angleX);
 
-        // 归一化到屏幕（需要缩放因子）
-        float scale = 0.01f * camera.Fov / 60f;
+        float scale = 0.01f * FocalLength(camera.Fov) / FocalLength(60f);
 
         float normalizedX = isoX * scale / camera.AspectRatio + 0.5f;
         float normalizedY = isoY * scale + 0.5f;
 
-        // 距离用于排序（虽然无透视，但仍需Z排序）
-        float distance = dy; // 使用Y作为深度线索
+        float distance = MathF.Sqrt(dx * dx + dy * dy + dz * dz);
 
         return new(NormalizedToPixel(normalizedX, normalizedY), distance, true);
     }
 
     /// <summary>
-    /// 全景/小星球效果（极坐标投影）
+    /// 小星球效果（立体投影 r' = 2/(1+r)）
     /// </summary>
     public static ProjectionResult LittlePlanet(PointN3 point, Camera camera)
     {
@@ -434,16 +426,16 @@ public static class PerspectiveProjection
         float y = (ny - 0.5f) * 2;
 
         float r = MathF.Sqrt(x * x + y * y);
+        if (r < 1e-6f) return standard;
         float theta = MathF.Atan2(y, x);
 
-        // 小星球效果：将平面映射到球面
-        float newR = 2f / (1 + r); // 反比映射
+        float newR = 2f / (1f + r);
 
         return new(
             NormalizedToPixel(newR * MathF.Cos(theta) * 0.5f + 0.5f,
                               newR * MathF.Sin(theta) * 0.5f + 0.5f),
             standard.Distance,
-            standard.InFront
+            true
         );
     }
 }

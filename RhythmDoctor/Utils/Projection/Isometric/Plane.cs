@@ -13,7 +13,7 @@ namespace RhythmBase.RhythmDoctor.Utils.Projection.Isometric
 		{
 			PointN pixelPos = new(
 				PixelateWidth / 2f + Position.X,
-				PixelateHeight / 2f - Position.Y
+				PixelateHeight / 2f + Position.Y
 			);
 			return new Move
 			{

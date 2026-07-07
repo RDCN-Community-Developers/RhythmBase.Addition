@@ -33,11 +33,11 @@ namespace RhythmBase.RhythmDoctor.Utils.Projection.Isometric
 		public void Initialize(TickTime beat)
 		{
 			if (XIndex != RoomIndex.None)
-				level.Add(new SetRoomContentMode() { TickTime = beat, Y = 0, Mode = ContentMode.AspectFill });
-			if (XIndex != RoomIndex.None)
-				level.Add(new SetRoomContentMode() { TickTime = beat, Y = 1, Mode = ContentMode.AspectFill });
-			if (XIndex != RoomIndex.None)
-				level.Add(new SetRoomContentMode() { TickTime = beat, Y = 2, Mode = ContentMode.AspectFill });
+				level.Add(new SetRoomContentMode() { TickTime = beat, Y = XIndex.Value, Mode = ContentMode.AspectFill });
+			if (YIndex != RoomIndex.None)
+				level.Add(new SetRoomContentMode() { TickTime = beat, Y = YIndex.Value, Mode = ContentMode.AspectFill });
+			if (ZIndex != RoomIndex.None)
+				level.Add(new SetRoomContentMode() { TickTime = beat, Y = ZIndex.Value, Mode = ContentMode.AspectFill });
 		}
 		public void LookFrom(PointN3 p, TickTime beat)
 		{

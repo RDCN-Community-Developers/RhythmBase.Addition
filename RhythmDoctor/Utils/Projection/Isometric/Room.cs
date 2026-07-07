@@ -12,10 +12,13 @@ namespace RhythmBase.RhythmDoctor.Utils.Projection.Isometric
 		public PointN Projection { get; internal set; }
 		public readonly MoveRoom GetMoveRoom()
 		{
+			float len = Length(RoomDirecion);
+			if (len < 1e-6f)
+				return new() { Scale = new SizeN(100, 0), Angle = 0 };
 			return new()
 			{
-				Scale = new SizeN(100, Length(RoomDirecion) * 100),
-				Angle = float.Atan2(RoomDirecion.Y, RoomDirecion.X) * 180f / (float)Math.PI,
+				Scale = new SizeN(100, len * 100),
+				Angle = -float.Atan2(RoomDirecion.Y, RoomDirecion.X) * 180f / (float)Math.PI,
 			};
 		}
 		private static float Length(PointN p) =>

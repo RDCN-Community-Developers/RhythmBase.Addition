@@ -12,56 +12,53 @@ namespace RhythmBase.RhythmDoctor.Utils.Projection.Isometric
 		public Viewer()
 		{
 		}
+		private static float SignNZ(float x) => x >= 0 ? 1f : -1f;
+
 		public Result3D<Room> LookFrom(PointN3 p)
 		{
 			var v = p.ToVector3();
 			Camera = p;
-			// 基平面投影基准向量
 			var ux = UnitOf(new(1, 0, 0), v);
 			var uy = UnitOf(new(0, 1, 0), v);
 			var uz = UnitOf(new(0, 0, 1), v);
-			// 投影向量
 			var vx = Project(ux, v);
 			var vy = Project(uy, v);
 			var vz = Project(uz, v);
-			// 空间夹角
 			var rx = CosOf(ux, new Vector3(0, 1, 0));
 			var ry = CosOf(uy, new Vector3(0, 0, 1));
 			var rz = CosOf(uz, new Vector3(1, 0, 0));
-			// 法向量投影
 			var tx = Project(new(1, 0, 0), v);
 			var ty = Project(new(0, 1, 0), v);
 			var tz = Project(new(0, 0, 1), v);
 
-			var r = AngleOf(p.ToVector3());
+			var bx = SignNZ(p.X);
+			var by = SignNZ(p.Y);
+			var bz = SignNZ(p.Z);
 
-			var bx = float.Sign(p.X);
-			var by = float.Sign(p.Y);
-			var bz = float.Sign(p.Z);
 			Result3D<Room> result = new()
 			{
 				X = new()
 				{
-					Projection = new PointN(tx.X, tx.Y),
+					Projection = new PointN(tx.X, -tx.Y),
 					RoomDirecion = new PointN(vx.X, -vx.Y),
 					ElementAngle = rx * bx * bz,
-					Direction = new PointN(tx.X, tx.Y),
+					Direction = new PointN(tx.X, -tx.Y),
 					CameraValue = p.X,
 				},
 				Y = new()
 				{
-					Projection = new PointN(ty.X, ty.Y),
-					RoomDirecion = new PointN(vy.X, vy.Y),
+					Projection = new PointN(ty.X, -ty.Y),
+					RoomDirecion = new PointN(vy.X, -vy.Y),
 					ElementAngle = ry * bx * by,
-					Direction = new PointN(ty.X, ty.Y),
+					Direction = new PointN(ty.X, -ty.Y),
 					CameraValue = p.Y,
 				},
 				Z = new()
 				{
-					Projection = new PointN(tz.X, tz.Y),
+					Projection = new PointN(tz.X, -tz.Y),
 					RoomDirecion = new PointN(vz.X, -vz.Y),
 					ElementAngle = rz * bz * by,
-					Direction = new PointN(tz.X, tz.Y),
+					Direction = new PointN(tz.X, -tz.Y),
 					CameraValue = p.Z,
 				},
 			};
@@ -128,18 +125,6 @@ namespace RhythmBase.RhythmDoctor.Utils.Projection.Isometric
 			if (len1 <= 1e-6f || len2 <= 1e-6f)
 				return 0f;
 			return float.Acos(Vector3.Dot(v1, v2) / (len1 * len2));
-		}
-		private static Vector2 AngleOf(Vector3 v)
-		{
-			const float EPS = 1e-6f;
-			if (v.LengthSquared() <= EPS * EPS)
-				return Vector2.Zero;
-			float proj = MathF.Sqrt(v.X * v.X + v.Z * v.Z);
-			float yaw = 0f;
-			if (proj > EPS)
-				yaw = MathF.Atan2(v.X, v.Z);
-			float pitch = MathF.Atan2(v.Y, proj);
-			return new Vector2(yaw, pitch);
 		}
 	}
 }
