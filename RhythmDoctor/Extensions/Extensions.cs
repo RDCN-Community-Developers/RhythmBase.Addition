@@ -100,6 +100,56 @@ public static partial class Extensions
 			},
 		};
 		return r;
+	} 
+	/// <inheritdoc/>
+	internal static string GetCloseTag(string name) => $"</{name}>";
+	/// <inheritdoc/>
+	internal static string GetOpenTag(string name, string? arg = null) => arg is null ? $"<{name}>" : $"<{name}={arg}>";
+	/// <summary>
+	/// Tries to add a tag to the specified string based on the provided name and boolean values.
+	/// </summary>
+	/// <param name="tag">The string to which the tag will be added.</param>
+	/// <param name="name">The name of the tag.</param>
+	/// <param name="before">A boolean value indicating whether the tag is before.</param>
+	/// <param name="after">A boolean value indicating whether the tag is after.</param>
+	internal static void TryAddTag(ref string tag, string name, bool before, bool after)
+	{
+		if (before != after)
+			tag += after
+			? GetOpenTag(name)
+			: GetCloseTag(name);
+	}
+	/// <summary>
+	/// Tries to add a tag to the specified string based on the provided name and optional string values.
+	/// </summary>
+	/// <param name="tag">The string to which the tag will be added.</param>
+	/// <param name="name">The name of the tag.</param>
+	/// <param name="before">An optional string value indicating the tag before.</param>
+	/// <param name="after">An optional string value indicating the tag after.</param>
+	internal static void TryAddTag(ref string tag, string name, string? before, string? after)
+	{
+		if (before != after)
+			tag += after is null
+			? GetCloseTag(name)
+			: before is null
+			? GetOpenTag(name, after)
+			: GetCloseTag(name) + GetOpenTag(name, after);
 	}
 	private static float Length(PointN p) => (float)Math.Sqrt(p.X * p.X + p.Y * p.Y);
+#if NETSTANDARD
+	extension<TStyle>(RichLine<TStyle>) where TStyle : IRichStringStyle<TStyle>, new()
+	{
+		/// <summary>
+		/// Deserializes a string into an <see cref="RichLine{RDPhraseStyle}"/>.
+		/// </summary>
+		/// <param name="text">The string to deserialize.</param>
+		/// <returns>A new <see cref="RichLine{RDPhraseStyle}"/> containing the deserialized content.</returns>
+		/// <exception cref="ArgumentNullException">Thrown when the input text is null.</exception>
+		/// <exception cref="FormatException">Thrown when the input text has an invalid format.</exception>
+		public static RichLine<TStyle> Deserialize(string text)
+		{
+			return RichLine<TStyle>.Empty.Deserialize(text);
+		}
+	}
+#endif
 }
