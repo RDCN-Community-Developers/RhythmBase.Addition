@@ -2,8 +2,6 @@
 using RhythmBase.RhythmDoctor.Assets;
 using RhythmBase.RhythmDoctor.Components;
 using RhythmBase.RhythmDoctor.Events;
-using SkiaSharp;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace RhythmBase.RhythmDoctor.Extensions;

@@ -1,6 +1,4 @@
-﻿using RhythmBase.Global.Extensions;
-using RhythmBase.RhythmDoctor.Components;
-using RhythmBase.RhythmDoctor.Events;
+﻿using RhythmBase.RhythmDoctor.Components;
 namespace RhythmBase.RhythmDoctor.Utils.OneshotHelper
 {
 	public class NurseSayConfig

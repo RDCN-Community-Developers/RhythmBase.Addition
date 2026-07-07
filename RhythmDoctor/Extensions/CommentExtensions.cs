@@ -1,5 +1,4 @@
-﻿using RhythmBase.Global.Components;
-using RhythmBase.RhythmDoctor.Components;
+﻿using RhythmBase.RhythmDoctor.Components;
 using RhythmBase.RhythmDoctor.Events;
 
 namespace RhythmBase.RhythmDoctor.Extensions;

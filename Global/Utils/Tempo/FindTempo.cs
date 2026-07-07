@@ -1,6 +1,4 @@
-﻿using System.Threading.Tasks;
-
-namespace RhythmBase.Global.Utils.Tempo;
+﻿namespace RhythmBase.Global.Utils.Tempo;
 
 public enum ProcessingState
 {

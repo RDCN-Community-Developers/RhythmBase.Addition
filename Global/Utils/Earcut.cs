@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace RhythmBase.Global.Utils
+﻿namespace RhythmBase.Global.Utils
 {
     public class Earcut
     {

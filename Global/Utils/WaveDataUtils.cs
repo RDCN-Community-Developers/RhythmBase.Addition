@@ -1,12 +1,6 @@
 ﻿using NAudio.Dsp;
 using NAudio.Vorbis;
 using NAudio.Wave;
-using RhythmBase.Global.Extensions;
-using SkiaSharp;
-using System;
-using System.IO;
-using System.Linq;
-using System.Collections.Generic;
 
 namespace RhythmBase.Global.Utils
 {

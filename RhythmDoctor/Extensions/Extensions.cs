@@ -4,7 +4,6 @@ using RhythmBase.Global.Components.Vector;
 using RhythmBase.RhythmDoctor.Assets;
 using RhythmBase.RhythmDoctor.Components;
 using RhythmBase.RhythmDoctor.Utils.Projection;
-using RhythmBase.RhythmDoctor.Utils.Projection.Isometric;
 using SkiaSharp;
 using System.Numerics;
 

@@ -1,10 +1,5 @@
 ﻿using RhythmBase.Global.Components.Vector;
 using static RhythmBase.RhythmDoctor.Extensions.Extensions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RhythmBase.RhythmDoctor.Utils.Projection.Perspective;
 
