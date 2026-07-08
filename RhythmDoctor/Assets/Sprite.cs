@@ -234,12 +234,12 @@ namespace RhythmBase.RhythmDoctor.Assets
 		/// <inheritdoc/>
 		public override string ToString() => string.IsNullOrEmpty(Name) ? DisplayName : Name;
 		private static readonly string[] characterExpressionNames =
-				[
-						"neutral",
-						"happy",
-						"barely",
-						"missed"
-				];
+			[
+				"neutral",
+				"happy",
+				"barely",
+				"missed"
+			];
 		/// <summary>
 		/// An expression.
 		/// </summary>
