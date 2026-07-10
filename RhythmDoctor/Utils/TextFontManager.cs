@@ -38,8 +38,20 @@ namespace RhythmBase.RhythmDoctor.Utils
 		}
 		public TextFontManager AddWords(IEnumerable<string> words)
 		{
-			foreach (var word in words)
-				AddWord(word);
+			string[] newWords = words.Where(w => !infos.ContainsKey(w)).Distinct().ToArray();
+			if (newWords.Length == 0)
+				return this;
+			if (spriteSheetCanvas.ConsistentPivot)
+			{
+				SKRect[] rects = spriteSheetCanvas.DrawTexts(newWords, font, out SKPoint[] positions, out float[] widths);
+				for (int i = 0; i < newWords.Length; i++)
+					infos[newWords[i]] = new(newWords[i], positions[i].ToPointNI(), rects[i].ToRectN(), widths[i], default);
+			}
+			else
+			{
+				foreach (var word in newWords)
+					AddWord(word);
+			}
 			return this;
 		}
 

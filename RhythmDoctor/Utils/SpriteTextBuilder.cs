@@ -48,17 +48,30 @@ namespace RhythmBase.RhythmDoctor.Utils
 		{
 			SpriteSheetCanvas canvas = new(settings);
 			char[] chars = [.. text.ToCharArray().Distinct()];
-			foreach (char c in chars)
+			if (canvas.ConsistentPivot)
 			{
-				var rect = canvas.DrawText(c.ToString(), font, out var pos, out var width);
-				pages[c] = canvas.CurrentPage;
-				widths[c] = width;
-				positions[c] = pos;
+				string[] charStrings = chars.Select(c => c.ToString()).ToArray();
+				canvas.DrawTexts(charStrings, font, out SKPoint[] posArray, out float[] widthArray);
+				for (int i = 0; i < chars.Length; i++)
+				{
+					widths[chars[i]] = widthArray[i];
+					positions[chars[i]] = posArray[i];
+				}
+			}
+			else
+			{
+				foreach (char c in chars)
+				{
+					canvas.DrawText(c.ToString(), font, out var pos, out var width);
+					widths[c] = width;
+					positions[c] = pos;
+				}
 			}
 			SpriteSheetBook book = canvas.Build(out Sprite[] sprites);
 			for (int i = 0; i < chars.Length; i++)
 			{
 				PageIndex index = book.CardIndice.Single(j => j.ImageIndex == i);
+				pages[chars[i]] = index.Page;
 				sprites[index.Page].Clips.Add(new()
 				{
 					Name = chars[i].ToString(),

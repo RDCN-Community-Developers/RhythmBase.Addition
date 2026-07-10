@@ -17,6 +17,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 		public float StrokeWidth { get; set; } = 1;
 		public Color StrokeColor { get; set; } = Color.White;
 		public RectNI Margin { get; set; } = new();
+		public bool ConsistentPivot { get; set; } = false;
 		public SKPaint DefaultEffect { get; set; } = new()
 		{
 			Color = SKColors.Black,
@@ -45,6 +46,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 			Color = SKColors.Black,
 		};
 		public RectNI Margin { get; set; } = new();
+		public bool ConsistentPivot { get; set; }
 		public int CurrentPage => curPage;
 		public SpriteSheetCanvas(OutputDirection direction, SKSizeI maxSize) : this(direction, maxSize.Width, maxSize.Height) { }
 		public SpriteSheetCanvas(OutputDirection direction) : this(direction, int.MaxValue, int.MaxValue) { }
@@ -59,6 +61,7 @@ namespace RhythmBase.RhythmDoctor.Assets
 				Color = SKColors.Black,
 			};
 			Margin = settings.Margin;
+			ConsistentPivot = settings.ConsistentPivot;
 		}
 		public void DrawBitmaps(IEnumerable<SKBitmap> imgs)
 		{
@@ -68,27 +71,58 @@ namespace RhythmBase.RhythmDoctor.Assets
 		public void DrawBitmap(SKBitmap img) => DrawFrame(img);
 		public SKRect[] DrawTexts(string[] texts, SKFont font, out SKPoint[] positions, out float[] widths)
 		{
-			List<SKRect> _rects = [];
-			List<SKPoint> _positions = [];
-			List<float> _widths = [];
+			if (ConsistentPivot && texts.Length > 0)
+			{
+				float _glowOutlineWidth = float.Max(DefaultGlowSigma * 3, DefaultStrokeWidth);
+				SKRect[] measuredRects = new SKRect[texts.Length];
+				for (int i = 0; i < texts.Length; i++)
+					font.MeasureText(texts[i], out measuredRects[i], DefaultEffect);
+				SKRect union = measuredRects[0];
+				for (int i = 1; i < measuredRects.Length; i++)
+					union = SKRect.Union(union, measuredRects[i]);
+				SKSizeI targetSize = new(
+					(int)(union.Width + _glowOutlineWidth * 2),
+					(int)(union.Height + _glowOutlineWidth * 2));
+				SKPoint drawOffset = new(-union.Left + _glowOutlineWidth, -union.Top + _glowOutlineWidth);
+				SKRect[] _rects = new SKRect[texts.Length];
+				SKPoint[] _positions = new SKPoint[texts.Length];
+				float[] _widths = new float[texts.Length];
+				for (int i = 0; i < texts.Length; i++)
+					_rects[i] = DrawText(texts[i], font, out _positions[i], out _widths[i], targetSize, drawOffset);
+				positions = _positions;
+				widths = _widths;
+				return _rects;
+			}
+			List<SKRect> rects = [];
+			List<SKPoint> _pos = [];
+			List<float> _w = [];
 			foreach (string text in texts)
 			{
-				_rects.Add(DrawText(text, font, out SKPoint position, out float width));
-				_positions.Add(position);
-				_widths.Add(width);
+				rects.Add(DrawText(text, font, out SKPoint position, out float w));
+				_pos.Add(position);
+				_w.Add(w);
 			}
-			positions = [.. _positions];
-			widths = [.. _widths];
-			return [.. _rects];
+			positions = [.. _pos];
+			widths = [.. _w];
+			return [.. rects];
 		}
-		public SKRect DrawText(string text, SKFont font, out SKPoint position, out float width)
+		public SKRect DrawText(string text, SKFont font, out SKPoint position, out float width, SKSizeI? targetBitmapSize = null, SKPoint? consistentOffset = null)
 		{
 			float _glowOutlineWidth = float.Max(DefaultGlowSigma * 3, DefaultStrokeWidth);
 			width = font.MeasureText(text, out SKRect rect, DefaultEffect);
-			SKPoint off = new(-rect.Left, -rect.Top);
-			off.Offset(_glowOutlineWidth, _glowOutlineWidth);
+			SKPoint off;
+			if (consistentOffset.HasValue)
+			{
+				off = consistentOffset.Value;
+			}
+			else
+			{
+				off = new(-rect.Left, -rect.Top);
+				off.Offset(_glowOutlineWidth, _glowOutlineWidth);
+			}
 			rect.Offset(off.X, off.Y);
-			SKBitmap _base = new((int)(rect.Width + _glowOutlineWidth * 2), (int)(rect.Height + _glowOutlineWidth * 2));
+			SKSizeI bitmapSize = targetBitmapSize ?? new((int)(rect.Width + _glowOutlineWidth * 2), (int)(rect.Height + _glowOutlineWidth * 2));
+			SKBitmap _base = new(bitmapSize.Width, bitmapSize.Height);
 			SKBitmap _glow = _base.Copy();
 			SKBitmap _outline = _base.Copy();
 			using (SKCanvas _baseCanvas = new(_base))
