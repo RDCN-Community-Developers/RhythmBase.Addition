@@ -7,7 +7,7 @@
 	<RootNamespace>RhythmBase</RootNamespace>
 	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	<Title>RhythmBase.Addition</Title>
-	<Version>1.0.3</Version>
+	<Version>1.0.4</Version>
 	<Authors>obugs</Authors>
 		<LangVersion>preview</LangVersion>
 	<Company />

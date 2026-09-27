@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.11.35327.3
+# Visual Studio Version 18
+VisualStudioVersion = 18.6.11828.311 oobstable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RhythmBase.Addition", "RhythmBase.Addition.csproj", "{E490E9C6-172C-4F8B-B7CC-039A21FE1A2B}"
 EndProject
@@ -15,8 +15,8 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{E490E9C6-172C-4F8B-B7CC-039A21FE1A2B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E490E9C6-172C-4F8B-B7CC-039A21FE1A2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E490E9C6-172C-4F8B-B7CC-039A21FE1A2B}.Debug|Any CPU.ActiveCfg = Release|Any CPU
+		{E490E9C6-172C-4F8B-B7CC-039A21FE1A2B}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{E490E9C6-172C-4F8B-B7CC-039A21FE1A2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E490E9C6-172C-4F8B-B7CC-039A21FE1A2B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{6A8D62FA-C407-4962-A1AD-7EAD1FB2966C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
