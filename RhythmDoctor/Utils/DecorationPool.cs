@@ -13,16 +13,16 @@ public class DecorationPool<TReadOnlyState, TWritableState>
 	where TReadOnlyState : IEquatable<TReadOnlyState>
 	where TWritableState : IEquatable<TWritableState>
 {
-	protected Level level;
+	protected Chart chart;
 	protected readonly string filename;
 
 	public DecorationPool(
-		Level level,
+		Chart chart,
 		string filename,
 		int maxPoolSize = 1000)
 		: base(maxPoolSize)
 	{
-		this.level = level;
+		this.chart = chart;
 		this.filename = filename;
 		OnCreateResource = static (state) => new Decoration();
 	}
@@ -35,7 +35,7 @@ public class DecorationPool<TReadOnlyState, TWritableState>
 		{
 			Decoration deco = allocation.Resource;
 			deco.Character = filename;
-			level.Decorations.Add(deco);
+			chart.Decorations.Add(deco);
 
 			var sortedFragments = allocation.SortedFragments.ToList();
 			for (int i = 0; i < sortedFragments.Count; i++)
@@ -44,19 +44,19 @@ public class DecorationPool<TReadOnlyState, TWritableState>
 				if (i == 0)
 					deco.Add(new SetVisible
 					{
-						TickTime = new(level.Calculator, v.Start),
+						TickTime = new(chart.Calculator, v.Start),
 						Visible = true
 					});
 				else if (sortedFragments[i - 1].End < v.Start)
 				{
 					deco.Add(new SetVisible
 					{
-						TickTime = new(level.Calculator, sortedFragments[i - 1].End),
+						TickTime = new(chart.Calculator, sortedFragments[i - 1].End),
 						Visible = false
 					});
 					deco.Add(new SetVisible
 					{
-						TickTime = new(level.Calculator, v.Start),
+						TickTime = new(chart.Calculator, v.Start),
 						Visible = true
 					});
 				}
@@ -66,7 +66,7 @@ public class DecorationPool<TReadOnlyState, TWritableState>
 			{
 				deco.Add(new SetVisible
 				{
-					TickTime = new(level.Calculator, sortedFragments[^1].End),
+					TickTime = new(chart.Calculator, sortedFragments[^1].End),
 					Visible = false
 				});
 			}

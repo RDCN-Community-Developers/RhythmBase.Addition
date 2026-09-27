@@ -65,9 +65,9 @@ namespace RhythmBase.RhythmDoctor.Utils
 		/// <summary>
 		/// 构建 Sprite Sheet 并创建各 Page 的子池。
 		/// </summary>
-		public Sprite[] PrepareSprites(Level level, int maxPoolSize = 1000)
+		public Sprite[] PrepareSprites(Chart chart, int maxPoolSize = 1000)
 		{
-			this.level = level;
+			this.chart = chart;
 			builtBook = spriteSheetCanvas.Build(out Sprite[] result);
 			for (int i = 0; i < result.Length; i++)
 			{
@@ -91,7 +91,7 @@ namespace RhythmBase.RhythmDoctor.Utils
 			for (int i = 0; i < pagePools.Length; i++)
 			{
 				pagePools[i] = new DecorationPool<string, string>(
-					level, $"{filename}-{i}",
+					chart, $"{filename}-{i}",
 					maxPoolSize);
 				pagePools[i].OnStateChanged = (deco, key, beat) =>
 				{

@@ -10,16 +10,16 @@ namespace RhythmBase.RhythmDoctor.Utils.Projection.Isometric
 {
 	public class Builder
 	{
-		private readonly Level level;
+		private readonly Chart chart;
 		private readonly Viewer viewer = new();
 		internal Result3D<Room>? lastLook;
 		public SingleRoom XIndex { get; set; } = RoomIndex.None;
 		public SingleRoom YIndex { get; set; } = RoomIndex.None;
 		public SingleRoom ZIndex { get; set; } = RoomIndex.None;
 		public ObservableCollection<PerspectivePoint> Points { get; } = [];
-		public Builder(Level level)
+		public Builder(Chart chart)
 		{
-			this.level = level;
+			this.chart = chart;
 			Points.CollectionChanged += (s, e) =>
 			{
 				if (e.OldItems != null)
@@ -33,11 +33,11 @@ namespace RhythmBase.RhythmDoctor.Utils.Projection.Isometric
 		public void Initialize(TickTime beat)
 		{
 			if (XIndex != RoomIndex.None)
-				level.Add(new SetRoomContentMode() { TickTime = beat, Y = XIndex.Value, Mode = ContentMode.AspectFill });
+				chart.Add(new SetRoomContentMode() { TickTime = beat, Y = XIndex.Value, Mode = ContentMode.AspectFill });
 			if (YIndex != RoomIndex.None)
-				level.Add(new SetRoomContentMode() { TickTime = beat, Y = YIndex.Value, Mode = ContentMode.AspectFill });
+				chart.Add(new SetRoomContentMode() { TickTime = beat, Y = YIndex.Value, Mode = ContentMode.AspectFill });
 			if (ZIndex != RoomIndex.None)
-				level.Add(new SetRoomContentMode() { TickTime = beat, Y = ZIndex.Value, Mode = ContentMode.AspectFill });
+				chart.Add(new SetRoomContentMode() { TickTime = beat, Y = ZIndex.Value, Mode = ContentMode.AspectFill });
 		}
 		public void LookFrom(PointN3 p, TickTime beat)
 		{
@@ -49,7 +49,7 @@ namespace RhythmBase.RhythmDoctor.Utils.Projection.Isometric
 				mrx.TickTime = beat;
 				mrx.Y = XIndex.Value;
 				mrx.Duration = 0;
-				level.Add(mrx);
+				chart.Add(mrx);
 			}
 			if (YIndex != RoomIndex.None)
 			{
@@ -57,7 +57,7 @@ namespace RhythmBase.RhythmDoctor.Utils.Projection.Isometric
 				mry.TickTime = beat;
 				mry.Y = YIndex.Value;
 				mry.Duration = 0;
-				level.Add(mry);
+				chart.Add(mry);
 			}
 			if (ZIndex != RoomIndex.None)
 			{
@@ -65,14 +65,14 @@ namespace RhythmBase.RhythmDoctor.Utils.Projection.Isometric
 				mrz.TickTime = beat;
 				mrz.Y = ZIndex.Value;
 				mrz.Duration = 0;
-				level.Add(mrz);
+				chart.Add(mrz);
 			}
 		}
 		public void LookFrom(PointN3 p, TickTime beat, float duration, int frameCount, EaseType ease = EaseType.Linear)
 		{
 			Vector3 oc = viewer.Camera.ToVector3();
 			Vector3 cc = p.ToVector3();
-			beat = new(level.Calculator, beat);
+			beat = new(chart.Calculator, beat);
 			for (int i = 0; i < frameCount; i++)
 			{
 				TickTime b = beat + duration * (i / (float)(frameCount - 1));
